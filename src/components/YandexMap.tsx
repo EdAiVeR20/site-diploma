@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { useTelegram } from '../hooks/useTelegram';
 import type { Car } from '../types';
 import '../types/ymaps.d.ts';
 
@@ -86,6 +87,8 @@ export function YandexMap({ cars, userLocation, onCarSelect, className = '' }: Y
     const userMarkerRef = useRef<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { colorScheme } = useTelegram(); // Get dark mode state from Telegram
+    const isDark = colorScheme === 'dark';
 
     // Initial map setup
     useEffect(() => {
@@ -119,7 +122,7 @@ export function YandexMap({ cars, userLocation, onCarSelect, className = '' }: Y
                             zoom: 14,
                             controls: [] // Remove all controls (zoom, etc.)
                         }, {
-                            suppressMapOpenBlock: true, // Hide "Open in Maps" button
+                            suppressMapOpenBlock: false, // User requested to revert this (show "Open in Maps")
                             yandexMapDisablePoiInteractivity: true, // Disable POI clicks
                             showLinkOnMap: false // Hide extra links if possible
                         });
@@ -279,7 +282,7 @@ export function YandexMap({ cars, userLocation, onCarSelect, className = '' }: Y
     }, [userLocation, updateUserMarker]);
 
     return (
-        <div className={`relative w-full h-full ${className}`} style={{ minHeight: '200px' }}>
+        <div className={`relative w-full h-full ${className} ${isDark ? 'ymaps-dark-mode' : ''}`} style={{ minHeight: '200px' }}>
             {/* Loading state */}
             {isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 z-10">

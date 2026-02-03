@@ -34,6 +34,21 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Dark mode map filter */
+.ymaps-dark-mode .ymaps-2-1-79-ground-pane {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+.ymaps-dark-mode .ymaps-2-1-79-traffic {
+  display: none !important;
+}
+
+/* Hide route editor junk just in case */
+.ymaps-2-1-79-controls__control_toolbar {
+  display: none !important;
+}
+
+
 /* Safe area for mobile devices */
 .safe-area-top {
   padding-top: env(safe-area-inset-top);
