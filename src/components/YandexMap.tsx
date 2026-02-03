@@ -117,10 +117,11 @@ export function YandexMap({ cars, userLocation, onCarSelect, className = '' }: Y
                         const map = new window.ymaps.Map(mapContainerRef.current, {
                             center: center,
                             zoom: 14,
-                            controls: ['zoomControl']
+                            controls: [] // Remove all controls (zoom, etc.)
                         }, {
-                            suppressMapOpenBlock: true,
-                            yandexMapDisablePoiInteractivity: true
+                            suppressMapOpenBlock: true, // Hide "Open in Maps" button
+                            yandexMapDisablePoiInteractivity: true, // Disable POI clicks
+                            showLinkOnMap: false // Hide extra links if possible
                         });
 
                         mapRef.current = map;
