@@ -214,8 +214,9 @@ export function YandexMap({ cars, userLocation, onCarSelect, className = '' }: Y
                     addUserMarker(map, userLocation);
                 }
             } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : 'Unknown error';
                 console.error('Failed to initialize Yandex Map:', err);
-                setError('Не удалось загрузить карту');
+                setError(`Не удалось загрузить карту: ${errorMessage}`);
                 setIsLoading(false);
             }
         };
