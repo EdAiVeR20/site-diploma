@@ -22,9 +22,9 @@ function loadYandexMapsScript(): Promise<void> {
         // Check for existing script
         const existingScript = document.querySelector('script[src*="api-maps.yandex.ru"]');
         if (existingScript) {
-            // Wait for it to load with timeout
+            // Wait for it to load with timeout (30 seconds)
             let attempts = 0;
-            const maxAttempts = 100; // 10 seconds max
+            const maxAttempts = 300; // 30 seconds max
             const checkLoaded = setInterval(() => {
                 attempts++;
                 if (typeof ymaps3 !== 'undefined') {
@@ -32,7 +32,8 @@ function loadYandexMapsScript(): Promise<void> {
                     resolve();
                 } else if (attempts >= maxAttempts) {
                     clearInterval(checkLoaded);
-                    reject(new Error('Yandex Maps script load timeout'));
+                    scriptLoadPromise = null;
+                    reject(new Error('Existing script timeout'));
                 }
             }, 100);
             return;
@@ -45,11 +46,11 @@ function loadYandexMapsScript(): Promise<void> {
         script.async = true;
         script.crossOrigin = 'anonymous';
 
-        // Timeout for script load
+        // Timeout for script load (30 seconds for slow mobile networks)
         const loadTimeout = setTimeout(() => {
             scriptLoadPromise = null; // Allow retry
-            reject(new Error('Timeout: скрипт не загрузился за 15 секунд'));
-        }, 15000);
+            reject(new Error('Timeout: скрипт не загрузился за 30 секунд'));
+        }, 30000);
 
         script.onload = () => {
             // Wait for ymaps3 to be defined with timeout
