@@ -8,13 +8,13 @@ const YANDEX_MAPS_API_KEY = import.meta.env.VITE_YANDEX_MAPS_API_KEY || '';
 // Track if script is being loaded
 let scriptLoadPromise: Promise<void> | null = null;
 
-// Load Yandex Maps script dynamically
+// Load Yandex Maps script dynamically (v2.1)
 function loadYandexMapsScript(): Promise<void> {
     if (scriptLoadPromise) return scriptLoadPromise;
 
     scriptLoadPromise = new Promise((resolve, reject) => {
         // Check if already loaded
-        if (typeof ymaps3 !== 'undefined') {
+        if (typeof window.ymaps !== 'undefined') {
             resolve();
             return;
         }
@@ -27,7 +27,7 @@ function loadYandexMapsScript(): Promise<void> {
             const maxAttempts = 300; // 30 seconds max
             const checkLoaded = setInterval(() => {
                 attempts++;
-                if (typeof ymaps3 !== 'undefined') {
+                if (typeof window.ymaps !== 'undefined') {
                     clearInterval(checkLoaded);
                     resolve();
                 } else if (attempts >= maxAttempts) {
@@ -41,10 +41,9 @@ function loadYandexMapsScript(): Promise<void> {
 
         // Create and append script
         const script = document.createElement('script');
-        // Use the correct v3 API URL
-        script.src = `https://api-maps.yandex.ru/v3/?apikey=${YANDEX_MAPS_API_KEY}&lang=ru_RU`;
+        // Use v2.1 API URL
+        script.src = `https://api-maps.yandex.ru/2.1/?apikey=${YANDEX_MAPS_API_KEY}&lang=ru_RU`;
         script.async = true;
-        script.crossOrigin = 'anonymous';
 
         // Timeout for script load (30 seconds for slow mobile networks)
         const loadTimeout = setTimeout(() => {
@@ -53,22 +52,8 @@ function loadYandexMapsScript(): Promise<void> {
         }, 30000);
 
         script.onload = () => {
-            // Wait for ymaps3 to be defined with timeout
-            let attempts = 0;
-            const maxAttempts = 100;
-            const checkReady = setInterval(() => {
-                attempts++;
-                if (typeof ymaps3 !== 'undefined') {
-                    clearInterval(checkReady);
-                    clearTimeout(loadTimeout);
-                    resolve();
-                } else if (attempts >= maxAttempts) {
-                    clearInterval(checkReady);
-                    clearTimeout(loadTimeout);
-                    scriptLoadPromise = null; // Allow retry
-                    reject(new Error('API загружен, но ymaps3 не определён'));
-                }
-            }, 50);
+            clearTimeout(loadTimeout);
+            resolve();
         };
 
         script.onerror = (event) => {
@@ -96,34 +81,92 @@ interface YandexMapProps {
 
 export function YandexMap({ cars, userLocation, onCarSelect, className = '' }: YandexMapProps) {
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    const mapRef = useRef<YMaps3MapInstance | null>(null);
-    const markersRef = useRef<YMaps3Marker[]>([]);
-    const userMarkerRef = useRef<YMaps3Marker | null>(null);
+    const mapRef = useRef<any>(null);
+    const markersRef = useRef<any[]>([]);
+    const userMarkerRef = useRef<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Wait for ymaps3 to be loaded
-    const waitForYmaps3 = useCallback((): Promise<void> => {
-        return loadYandexMapsScript().then(() => {
-            // Check if ymaps3 is ready
-            if (typeof ymaps3 !== 'undefined' && 'ready' in ymaps3) {
-                return Promise.resolve();
+    // Initial map setup
+    useEffect(() => {
+        let isMounted = true;
+
+        const initMap = async () => {
+            // Avoid double initialization
+            if (mapRef.current) return;
+
+            try {
+                setIsLoading(true);
+                setError(null);
+
+                await loadYandexMapsScript();
+
+                if (!isMounted) return;
+
+                // Initialize map when ymaps is ready
+                window.ymaps.ready(() => {
+                    if (!isMounted || !mapContainerRef.current) return;
+
+                    try {
+                        // Default center (Moscow) - v2.1 uses [latitude, longitude]
+                        const defaultCenter = [55.7558, 37.6173];
+                        const center = userLocation
+                            ? [userLocation.latitude, userLocation.longitude]
+                            : defaultCenter;
+
+                        const map = new window.ymaps.Map(mapContainerRef.current, {
+                            center: center,
+                            zoom: 14,
+                            controls: ['zoomControl']
+                        }, {
+                            suppressMapOpenBlock: true,
+                            yandexMapDisablePoiInteractivity: true
+                        });
+
+                        mapRef.current = map;
+                        setIsLoading(false);
+
+                        // Add markers
+                        updateMarkers(map);
+
+                        if (userLocation) {
+                            updateUserMarker(map, userLocation);
+                        }
+                    } catch (err) {
+                        console.error('Map creation error:', err);
+                        setError(`Ошибка создания карты: ${err}`);
+                        setIsLoading(false);
+                    }
+                });
+
+            } catch (err) {
+                if (!isMounted) return;
+                const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+                console.error('Failed to load Yandex Maps script:', err);
+                setError(`Не удалось загрузить скрипт карты: ${errorMessage}`);
+                setIsLoading(false);
             }
-            return Promise.reject(new Error('Yandex Maps API failed to initialize'));
-        });
+        };
+
+        initMap();
+
+        return () => {
+            isMounted = false;
+            if (mapRef.current) {
+                mapRef.current.destroy();
+                mapRef.current = null;
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Create car marker element with hover popup
-    const createCarMarkerElement = useCallback((car: Car): HTMLElement => {
-        const element = document.createElement('div');
-        element.className = 'car-marker';
-
-        // Get the first tariff price for display
+    // Helper to generate marker HTML
+    const getMarkerHTML = (car: Car) => {
         const hourlyTariff = car.tariffs.find(t => t.type === 'hourly');
         const priceText = hourlyTariff ? `${hourlyTariff.pricePerUnit} ₽/час` : '';
 
-        element.innerHTML = `
-            <div class="relative cursor-pointer group">
+        return `
+            <div class="relative cursor-pointer group" style="width: 40px; height: 40px; transform: translate(-20px, -40px);">
                 <!-- Car marker icon -->
                 <div class="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full shadow-lg flex items-center justify-center border-2 border-white transform group-hover:scale-110 transition-transform">
                     <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -135,11 +178,9 @@ export function YandexMap({ cars, userLocation, onCarSelect, className = '' }: Y
                 <!-- Hover popup -->
                 <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden w-48">
-                        <!-- Car image -->
                         <div class="w-full h-24 bg-gray-200 dark:bg-gray-700">
-                            <img src="${car.imageUrl}" alt="${car.brand} ${car.model}" class="w-full h-full object-cover" onerror="this.style.display='none'"/>
+                            <img src="${car.imageUrl}" alt="${car.brand}" class="w-full h-full object-cover" onerror="this.style.display='none'"/>
                         </div>
-                        <!-- Car info -->
                         <div class="p-2.5">
                             <p class="font-semibold text-gray-900 dark:text-white text-sm truncate">${car.brand} ${car.model}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${car.licensePlate}</p>
@@ -149,166 +190,92 @@ export function YandexMap({ cars, userLocation, onCarSelect, className = '' }: Y
                             </div>
                         </div>
                     </div>
-                    <!-- Arrow pointing down -->
-                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-6 border-r-6 border-t-6 border-transparent border-t-white dark:border-t-gray-800"></div>
+                     <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-6 border-r-6 border-t-6 border-transparent border-t-white dark:border-t-gray-800"></div>
                 </div>
             </div>
         `;
+    };
 
-        element.onclick = () => {
-            onCarSelect?.(car);
-        };
+    // Update markers
+    const updateMarkers = useCallback((map: any) => {
+        if (!window.ymaps) return;
 
-        return element;
-    }, [onCarSelect]);
+        // Clear old markers
+        markersRef.current.forEach(marker => map.geoObjects.remove(marker));
+        markersRef.current = [];
 
-    // Create user marker element
-    const createUserMarkerElement = useCallback((): HTMLElement => {
-        const element = document.createElement('div');
-        element.className = 'user-marker';
-        element.innerHTML = `
-            <div class="relative">
+        cars.forEach(car => {
+            // Create custom layout
+            const LayoutClass = window.ymaps.templateLayoutFactory.createClass(getMarkerHTML(car));
+
+            const placemark = new window.ymaps.Placemark(
+                [car.latitude, car.longitude], // v2.1 uses [lat, lng]
+                {},
+                {
+                    iconLayout: LayoutClass,
+                    iconShape: {
+                        type: 'Rectangle',
+                        coordinates: [[-20, -40], [20, 0]]
+                    }
+                }
+            );
+
+            // Add click listener
+            placemark.events.add('click', () => {
+                onCarSelect?.(car);
+            });
+
+            map.geoObjects.add(placemark);
+            markersRef.current.push(placemark);
+        });
+    }, [cars, onCarSelect]);
+
+    // Update user marker
+    const updateUserMarker = useCallback((map: any, location: { latitude: number; longitude: number }) => {
+        if (!window.ymaps) return;
+
+        if (userMarkerRef.current) {
+            map.geoObjects.remove(userMarkerRef.current);
+        }
+
+        const userHtml = `
+            <div class="relative" style="transform: translate(-12px, -12px);">
                 <div class="w-6 h-6 bg-blue-500 rounded-full shadow-lg border-3 border-white animate-pulse"></div>
                 <div class="absolute inset-0 w-6 h-6 bg-blue-500/30 rounded-full animate-ping"></div>
             </div>
         `;
-        return element;
-    }, []);
 
-    // Initialize map
-    useEffect(() => {
-        if (!mapContainerRef.current) return;
+        const LayoutClass = window.ymaps.templateLayoutFactory.createClass(userHtml);
 
-        const initMap = async () => {
-            try {
-                setIsLoading(true);
-                setError(null);
-
-                // Wait for script to load
-                await waitForYmaps3();
-
-                // Wait for API to be ready
-                await ymaps3.ready;
-
-                if (!mapContainerRef.current) return;
-
-                // Default center (Moscow) - note: v3 uses [longitude, latitude]
-                const defaultCenter: [number, number] = [37.6173, 55.7558];
-                const center: [number, number] = userLocation
-                    ? [userLocation.longitude, userLocation.latitude]
-                    : defaultCenter;
-
-                // Create map
-                const map = new ymaps3.YMap(mapContainerRef.current, {
-                    location: {
-                        center,
-                        zoom: 15, // Increased zoom for better view of nearby cars
-                    },
-                });
-
-                // Add default scheme layer
-                map.addChild(new ymaps3.YMapDefaultSchemeLayer());
-
-                // Add features layer for markers
-                map.addChild(new ymaps3.YMapDefaultFeaturesLayer());
-
-                mapRef.current = map;
-                setIsLoading(false);
-
-                // Add markers after map is ready
-                addCarMarkers(map);
-                if (userLocation) {
-                    addUserMarker(map, userLocation);
-                }
-            } catch (err) {
-                const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-                console.error('Failed to initialize Yandex Map:', err);
-                setError(`Не удалось загрузить карту: ${errorMessage}`);
-                setIsLoading(false);
-            }
-        };
-
-        initMap();
-
-        // Cleanup
-        return () => {
-            if (mapRef.current) {
-                mapRef.current.destroy();
-                mapRef.current = null;
-            }
-            markersRef.current = [];
-            userMarkerRef.current = null;
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    // Add car markers
-    const addCarMarkers = useCallback((map: YMaps3MapInstance) => {
-        // Remove old markers
-        markersRef.current.forEach(marker => {
-            try {
-                map.removeChild(marker);
-            } catch {
-                // Marker might already be removed
-            }
-        });
-        markersRef.current = [];
-
-        // Add new markers - note: v3 uses [longitude, latitude]
-        cars.forEach((car) => {
-            const element = createCarMarkerElement(car);
-            const marker = new ymaps3.YMapMarker(
-                {
-                    coordinates: [car.longitude, car.latitude],
-                },
-                element
-            );
-
-            map.addChild(marker);
-            markersRef.current.push(marker);
-        });
-    }, [cars, createCarMarkerElement]);
-
-    // Add user location marker
-    const addUserMarker = useCallback((map: YMaps3MapInstance, location: { latitude: number; longitude: number }) => {
-        // Remove old user marker
-        if (userMarkerRef.current) {
-            try {
-                map.removeChild(userMarkerRef.current);
-            } catch {
-                // Marker might already be removed
-            }
-        }
-
-        // Add user marker - note: v3 uses [longitude, latitude]
-        const element = createUserMarkerElement();
-        const marker = new ymaps3.YMapMarker(
+        const placemark = new window.ymaps.Placemark(
+            [location.latitude, location.longitude],
+            {},
             {
-                coordinates: [location.longitude, location.latitude],
-            },
-            element
+                iconLayout: LayoutClass
+            }
         );
 
-        map.addChild(marker);
-        userMarkerRef.current = marker;
-    }, [createUserMarkerElement]);
+        map.geoObjects.add(placemark);
+        userMarkerRef.current = placemark;
+    }, []);
 
-    // Update markers when cars change
+    // Effect to update markers when cars change
     useEffect(() => {
-        if (!mapRef.current) return;
-        addCarMarkers(mapRef.current);
-    }, [cars, addCarMarkers]);
+        if (mapRef.current) {
+            updateMarkers(mapRef.current);
+        }
+    }, [cars, updateMarkers]);
 
-    // Update user marker and center map when location changes
+    // Effect to update user location
     useEffect(() => {
-        if (!mapRef.current || !userLocation) return;
-
-        addUserMarker(mapRef.current, userLocation);
-        mapRef.current.setLocation(
-            { center: [userLocation.longitude, userLocation.latitude] },
-            { duration: 500 }
-        );
-    }, [userLocation, addUserMarker]);
+        if (mapRef.current && userLocation) {
+            updateUserMarker(mapRef.current, userLocation);
+            mapRef.current.panTo([userLocation.latitude, userLocation.longitude], {
+                delay: 0,
+                duration: 500
+            });
+        }
+    }, [userLocation, updateUserMarker]);
 
     return (
         <div className={`relative w-full h-full ${className}`} style={{ minHeight: '200px' }}>
@@ -317,7 +284,7 @@ export function YandexMap({ cars, userLocation, onCarSelect, className = '' }: Y
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 z-10">
                     <div className="flex flex-col items-center gap-2">
                         <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Загрузка карты...</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Загрузка карты (v2.1)...</span>
                     </div>
                 </div>
             )}
@@ -342,3 +309,4 @@ export function YandexMap({ cars, userLocation, onCarSelect, className = '' }: Y
         </div>
     );
 }
+
