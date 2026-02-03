@@ -30,7 +30,9 @@
   <!-- Telegram Web App SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-  <!-- Yandex Maps API is loaded dynamically from code for security -->
+  <!-- Preconnect to Yandex Maps for faster loading -->
+  <link rel="preconnect" href="https://api-maps.yandex.ru" crossorigin>
+  <link rel="dns-prefetch" href="https://api-maps.yandex.ru">
 </head>
 
 <body>

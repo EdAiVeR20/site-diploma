@@ -40,12 +40,15 @@ function loadYandexMapsScript(): Promise<void> {
 
         // Create and append script
         const script = document.createElement('script');
+        // Use the correct v3 API URL
         script.src = `https://api-maps.yandex.ru/v3/?apikey=${YANDEX_MAPS_API_KEY}&lang=ru_RU`;
         script.async = true;
+        script.crossOrigin = 'anonymous';
 
         // Timeout for script load
         const loadTimeout = setTimeout(() => {
-            reject(new Error('Yandex Maps script load timeout'));
+            scriptLoadPromise = null; // Allow retry
+            reject(new Error('Timeout: скрипт не загрузился за 15 секунд'));
         }, 15000);
 
         script.onload = () => {
@@ -61,14 +64,17 @@ function loadYandexMapsScript(): Promise<void> {
                 } else if (attempts >= maxAttempts) {
                     clearInterval(checkReady);
                     clearTimeout(loadTimeout);
-                    reject(new Error('Yandex Maps API initialization timeout'));
+                    scriptLoadPromise = null; // Allow retry
+                    reject(new Error('API загружен, но ymaps3 не определён'));
                 }
             }, 50);
         };
 
-        script.onerror = () => {
+        script.onerror = (event) => {
             clearTimeout(loadTimeout);
-            reject(new Error('Failed to load Yandex Maps script'));
+            scriptLoadPromise = null; // Allow retry
+            const errorDetails = event instanceof ErrorEvent ? event.message : 'network error';
+            reject(new Error(`Ошибка загрузки скрипта: ${errorDetails}`));
         };
 
         document.head.appendChild(script);
