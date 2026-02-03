@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/tool
 import { carsApi } from '../../api';
 import type { Car } from '../../types';
 
-// DEV MODE: Mock cars for development without backend
+// DEV MODE: Mock cars for development without backend (keep true until backend is ready)
 const DEV_MODE = true;
 
 // Generate mock cars around a location

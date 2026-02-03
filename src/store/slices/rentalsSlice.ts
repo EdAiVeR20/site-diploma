@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/tool
 import { rentalsApi } from '../../api';
 import type { Rental, RentalResponse, CompleteRentalResponse, Tariff } from '../../types';
 
-// DEV MODE: Mock rental history for development
+// DEV MODE: Mock rental history for development (keep true until backend is ready)
 const DEV_MODE = true;
 
 const MOCK_RENTAL_HISTORY: Rental[] = [

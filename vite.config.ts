@@ -1,12 +1,9 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory
-  const env = loadEnv(mode, process.cwd(), '')
-
   return {
     plugins: [react(), tailwindcss()],
     server: {
@@ -34,10 +31,6 @@ export default defineConfig(({ mode }) => {
     // Remove console.log in production
     esbuild: {
       drop: mode === 'production' ? ['console', 'debugger'] : [],
-    },
-    define: {
-      // Make env variables available in the app
-      'import.meta.env.VITE_YANDEX_MAPS_API_KEY': JSON.stringify(env.VITE_YANDEX_MAPS_API_KEY),
     },
   }
 })

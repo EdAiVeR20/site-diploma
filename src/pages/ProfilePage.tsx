@@ -16,8 +16,16 @@ export function ProfilePage({ onNavigateToVerification }: ProfilePageProps) {
     const { user: profile, isLoading } = useAppSelector((state) => state.profile);
 
     useEffect(() => {
-        dispatch(fetchProfile());
-    }, [dispatch]);
+        // Fetch profile with Telegram user if available
+        dispatch(fetchProfile({
+            telegramUser: tgUser ? {
+                id: tgUser.id,
+                firstName: tgUser.firstName,
+                lastName: tgUser.lastName,
+                username: tgUser.username,
+            } : undefined
+        }));
+    }, [dispatch, tgUser]);
 
     const getVerificationStatusText = (status: VerificationStatus): { text: string; color: string } => {
         switch (status) {

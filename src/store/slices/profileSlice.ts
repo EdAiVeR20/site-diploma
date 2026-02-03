@@ -2,8 +2,8 @@ import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/tool
 import { usersApi, verificationApi } from '../../api';
 import type { User, VerificationStatus } from '../../types';
 
-// DEV MODE: Enable mock data for development
-const DEV_MODE = true;
+// DEV MODE: Use mock backend data (set false to use Telegram data directly)
+const USE_BACKEND = false;
 
 const MOCK_USER: User = {
     id: '1',
@@ -60,21 +60,37 @@ const initialState: ProfileState = {
 // Async thunk for fetching user profile
 export const fetchProfile = createAsyncThunk<
     User,
-    void,
+    { telegramUser?: { id: number; firstName: string; lastName?: string; username?: string } },
     { rejectValue: string }
->('profile/fetch', async (_, { rejectWithValue }) => {
-    // DEV MODE: Return mock data
-    if (DEV_MODE) {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        return MOCK_USER;
+>('profile/fetch', async ({ telegramUser }, { rejectWithValue }) => {
+    // If we have Telegram user data, use it to create a profile
+    if (telegramUser) {
+        return {
+            id: String(telegramUser.id),
+            telegramId: telegramUser.id,
+            firstName: telegramUser.firstName,
+            lastName: telegramUser.lastName,
+            username: telegramUser.username,
+            balance: 0, // Will be fetched from backend later
+            verificationStatus: 'none' as const,
+            hasActiveRental: false,
+            createdAt: new Date().toISOString(),
+        };
     }
 
-    try {
-        const response = await usersApi.getProfile();
-        return response;
-    } catch {
-        return rejectWithValue('Не удалось загрузить профиль');
+    // Try to fetch from backend
+    if (USE_BACKEND) {
+        try {
+            const response = await usersApi.getProfile();
+            return response;
+        } catch {
+            return rejectWithValue('Не удалось загрузить профиль');
+        }
     }
+
+    // Fallback to mock data
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return MOCK_USER;
 });
 
 // Async thunk for submitting verification documents

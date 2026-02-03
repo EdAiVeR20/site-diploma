@@ -17,7 +17,7 @@ import { RentalPage } from './pages/RentalPage';
 import { VerificationPage } from './pages/VerificationPage';
 
 // DEV MODE: Set to true to bypass Telegram and use mock data
-const DEV_MODE = true;
+const DEV_MODE = false;
 
 // Inner component that uses router hooks
 function AppContent() {
@@ -78,7 +78,7 @@ function AppContent() {
     // Authenticate with backend
     const authenticate = async () => {
       try {
-        await dispatch(loginWithTelegram()).unwrap();
+        await dispatch(loginWithTelegram({ telegramUser: tgUser || undefined })).unwrap();
       } catch (err) {
         console.error('Authentication failed:', err);
       } finally {

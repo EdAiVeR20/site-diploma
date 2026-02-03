@@ -2,6 +2,9 @@ import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/tool
 import { authApi } from '../../api';
 import type { TelegramUser, AuthResponse } from '../../types';
 
+// Set to true when backend is ready
+const USE_BACKEND = false;
+
 interface AuthState {
     isAuthenticated: boolean;
     isAuthenticating: boolean;
@@ -25,9 +28,32 @@ const initialState: AuthState = {
 // Async thunk for Telegram authentication
 export const loginWithTelegram = createAsyncThunk<
     AuthResponse,
-    void,
-    { rejectValue: string }
->('auth/loginWithTelegram', async (_, { rejectWithValue }) => {
+    { telegramUser?: TelegramUser },
+    { rejectValue: string; state: { auth: AuthState } }
+>('auth/loginWithTelegram', async ({ telegramUser }, { rejectWithValue, getState }) => {
+    const state = getState();
+    const user = telegramUser || state.auth.telegramUser;
+
+    // If no backend, return auth response based on Telegram data
+    if (!USE_BACKEND) {
+        if (user) {
+            return {
+                userId: String(user.id),
+                isVerified: false,
+                balance: 0,
+                accessToken: 'mock-token',
+            };
+        }
+        // No Telegram user - still allow for demo
+        return {
+            userId: 'demo',
+            isVerified: false,
+            balance: 0,
+            accessToken: 'mock-token',
+        };
+    }
+
+    // Use backend for authentication
     try {
         const response = await authApi.login();
         return response;
