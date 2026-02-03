@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+  <!-- Theme and PWA -->
+  <meta name="theme-color" content="#2481cc" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- SEO -->
+  <title>Каршеринг — Аренда автомобилей</title>
+  <meta name="description"
+    content="Удобный каршеринг для аренды автомобилей. Найдите машину рядом, выберите тариф и начните поездку." />
+  <meta name="keywords" content="каршеринг, аренда авто, прокат машин, carsharing" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Каршеринг — Аренда автомобилей" />
+  <meta property="og:description" content="Удобный каршеринг для аренды автомобилей. Найдите машину рядом." />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ru_RU" />
+
+  <!-- Security -->
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="X-Frame-Options" content="DENY" />
+
+  <!-- Telegram Web App SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Yandex Maps API is loaded dynamically from code for security -->
+</head>
+
+<body>
+  <!-- Skip link for accessibility -->
+  <a href="#main-content" class="sr-only focus:not-sr-only">Перейти к содержимому</a>
+
+  <div id="root"></div>
+  <noscript>
+    <div style="text-align: center; padding: 2rem; font-family: system-ui, sans-serif;">
+      <h1>JavaScript отключён</h1>
+      <p>Для работы приложения необходимо включить JavaScript в браузере.</p>
+    </div>
+  </noscript>
+
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>
