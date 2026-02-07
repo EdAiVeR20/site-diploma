@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
       port: 5173,
     },
     build: {
+      target: 'esnext',
       // Disable source maps for production
       sourcemap: false,
       // Use esbuild for minification (default, faster than terser)

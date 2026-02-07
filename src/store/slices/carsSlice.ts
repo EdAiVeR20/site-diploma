@@ -5,7 +5,14 @@ import type { Car } from '../../types';
 // DEV MODE: Mock cars for development without backend (keep true until backend is ready)
 const DEV_MODE = true;
 
-// Generate mock cars around a location
+// Seeded random generator for stable car positions
+// Uses sine function to generate pseudo-random numbers based on seed
+const seededRandom = (seed: number): number => {
+    const x = Math.sin(seed * 9999) * 10000;
+    return x - Math.floor(x);
+};
+
+// Generate mock cars around a location with STABLE positions
 const generateMockCarsAroundLocation = (lat: number, lon: number): Car[] => {
     // Generate random offset in meters, convert to degrees
     const metersToDegreesLat = (m: number) => m / 111320;
@@ -23,9 +30,16 @@ const generateMockCarsAroundLocation = (lat: number, lon: number): Car[] => {
     const plates = ['А123БВ77', 'В456ГД99', 'Е789ЖЗ150', 'К012МН177', 'О345ПР97', 'С678ТУ199'];
 
     return carModels.map((car, index) => {
-        // Random offset: 100-800 meters from user
-        const distance = 100 + Math.random() * 700;
-        const angle = (index * 60 + Math.random() * 30) * Math.PI / 180; // Spread cars around
+        // Use seeded random for stable positions (same index = same position)
+        const seed1 = index * 1000 + 1;
+        const seed2 = index * 1000 + 2;
+        const seed3 = index * 1000 + 3;
+        const seed4 = index * 1000 + 4;
+        const seed5 = index * 1000 + 5;
+
+        // Stable distance: 100-800 meters from user
+        const distance = 100 + seededRandom(seed1) * 700;
+        const angle = (index * 60 + seededRandom(seed2) * 30) * Math.PI / 180; // Spread cars around
 
         const offsetLat = metersToDegreesLat(distance * Math.cos(angle));
         const offsetLon = metersToDegreesLon(distance * Math.sin(angle), lat);
@@ -35,17 +49,18 @@ const generateMockCarsAroundLocation = (lat: number, lon: number): Car[] => {
             brand: car.brand,
             model: car.model,
             licensePlate: plates[index % plates.length],
-            fuelLevel: 40 + Math.floor(Math.random() * 60),
+            fuelLevel: 40 + Math.floor(seededRandom(seed3) * 60),
             latitude: lat + offsetLat,
             longitude: lon + offsetLon,
             imageUrl: car.image,
             tariffs: [
-                { id: `t${index * 2 + 1}`, name: 'Почасовой', type: 'hourly' as const, pricePerUnit: 350 + Math.floor(Math.random() * 200) },
-                { id: `t${index * 2 + 2}`, name: 'Суточный', type: 'daily' as const, pricePerUnit: 2000 + Math.floor(Math.random() * 1000) },
+                { id: `t${index * 2 + 1}`, name: 'Почасовой', type: 'hourly' as const, pricePerUnit: 350 + Math.floor(seededRandom(seed4) * 200) },
+                { id: `t${index * 2 + 2}`, name: 'Суточный', type: 'daily' as const, pricePerUnit: 2000 + Math.floor(seededRandom(seed5) * 1000) },
             ],
         };
     });
 };
+
 
 // Default Moscow coordinates for fallback
 const DEFAULT_LAT = 55.7558;
