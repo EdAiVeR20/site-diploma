@@ -1,16 +1,49 @@
 @import "tailwindcss";
 
-/* Telegram Mini App specific styles */
+/* ========================================
+   DESIGN SYSTEM - GoShare Car Sharing App
+   ======================================== */
+
+/* Color Palette - Purple-focused modern design */
 :root {
-  --tg-theme-bg-color: #ffffff;
-  --tg-theme-text-color: #000000;
-  --tg-theme-hint-color: #999999;
-  --tg-theme-link-color: #2481cc;
-  --tg-theme-button-color: #2481cc;
+  /* Base colors */
+  --tg-theme-bg-color: #1a1a2e;
+  --tg-theme-text-color: #ffffff;
+  --tg-theme-hint-color: #8b8b9e;
+  --tg-theme-link-color: #a855f7;
+  --tg-theme-button-color: #8b5cf6;
   --tg-theme-button-text-color: #ffffff;
-  --tg-theme-secondary-bg-color: #f0f0f0;
+  --tg-theme-secondary-bg-color: #252540;
+
+  /* Extended palette */
+  --color-accent: #8b5cf6;
+  --color-accent-light: #a855f7;
+  --color-accent-dark: #7c3aed;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-surface: #16162a;
+  --color-surface-elevated: #1f1f38;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #c084fc 100%);
+  --gradient-balance: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  --gradient-dark: linear-gradient(180deg, #1a1a2e 0%, #16162a 100%);
 }
 
+/* Light theme override (if Telegram provides it) */
+@media (prefers-color-scheme: light) {
+  :root {
+    --tg-theme-bg-color: #f8f9fa;
+    --tg-theme-text-color: #1a1a2e;
+    --tg-theme-hint-color: #6b7280;
+    --tg-theme-secondary-bg-color: #ffffff;
+    --color-surface: #ffffff;
+    --color-surface-elevated: #f3f4f6;
+  }
+}
+
+/* Reset & Base */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -26,7 +59,7 @@ body,
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'SF Pro Display', sans-serif;
   background-color: var(--tg-theme-bg-color);
   color: var(--tg-theme-text-color);
   -webkit-font-smoothing: antialiased;
@@ -34,22 +67,173 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Dark mode map filter */
-.ymaps-dark-mode .ymaps-2-1-79-ground-pane {
-  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+/* Glassmorphism effects */
+.glass {
+  background: rgba(37, 37, 64, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(139, 92, 246, 0.1);
 }
 
-.ymaps-dark-mode .ymaps-2-1-79-traffic {
-  display: none !important;
+.glass-light {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-/* Hide route editor junk just in case */
-.ymaps-2-1-79-controls__control_toolbar {
-  display: none !important;
+/* Card styles */
+.card {
+  background: var(--tg-theme-secondary-bg-color);
+  border-radius: 1rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(139, 92, 246, 0.15);
+}
 
-/* Safe area for mobile devices */
+.card:active {
+  transform: scale(0.98);
+}
+
+/* Gradient text */
+.text-gradient {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Price styling from screenshots */
+.price-accent {
+  color: #a855f7;
+  font-weight: 600;
+}
+
+.price-unit {
+  color: var(--tg-theme-hint-color);
+  font-size: 0.75rem;
+}
+
+/* Status badges */
+.badge-success {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ========================================
+   COMPONENT STYLES
+   ======================================== */
+
+/* Bottom navigation */
+.bottom-nav {
+  background: var(--color-surface);
+  border-top: 1px solid rgba(139, 92, 246, 0.1);
+}
+
+.bottom-nav-item {
+  transition: color 0.2s ease;
+}
+
+.bottom-nav-item.active {
+  color: var(--color-accent);
+}
+
+.bottom-nav-item.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40%;
+  height: 2px;
+  background: var(--color-accent);
+  border-radius: 0 0 2px 2px;
+}
+
+/* Car list item styling */
+.car-list-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+  background: transparent;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.08);
+  transition: background 0.2s ease;
+}
+
+.car-list-item:hover {
+  background: rgba(139, 92, 246, 0.05);
+}
+
+.car-list-item:active {
+  background: rgba(139, 92, 246, 0.1);
+}
+
+/* Profile avatar gradient ring */
+.avatar-ring {
+  background: var(--gradient-primary);
+  padding: 3px;
+  border-radius: 9999px;
+}
+
+.avatar-inner {
+  background: var(--tg-theme-bg-color);
+  border-radius: 9999px;
+  padding: 2px;
+}
+
+/* Balance card */
+.balance-card {
+  background: var(--gradient-balance);
+  border-radius: 1rem;
+  padding: 1.25rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.balance-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -30%;
+  width: 200px;
+  height: 200px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+/* ========================================
+   SAFE AREAS & ACCESSIBILITY
+   ======================================== */
+
 .safe-area-top {
   padding-top: env(safe-area-inset-top);
 }
@@ -58,7 +242,7 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Accessibility: visually hidden but accessible to screen readers */
+/* Screen reader only */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -82,4 +266,40 @@ body {
   white-space: normal;
   background: var(--tg-theme-button-color);
   color: var(--tg-theme-button-text-color);
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+
+@keyframes pulse-slow {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s ease-in-out infinite;
 }

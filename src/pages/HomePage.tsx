@@ -149,11 +149,11 @@ export function HomePage({ onSelectCar }: HomePageProps) {
             </div>
 
             {/* Cars list */}
-            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-20">
-                <h2 className="text-lg font-semibold text-[var(--tg-theme-text-color)] mb-3">
+            <div className="flex-1 overflow-y-auto pb-20">
+                <h2 className="text-base font-semibold text-[var(--tg-theme-text-color)] px-4 py-3 sticky top-0 bg-[var(--tg-theme-bg-color)] z-10">
                     Машины рядом
                     {cars.length > 0 && (
-                        <span className="ml-2 text-sm font-normal text-[var(--tg-theme-hint-color)]">
+                        <span className="ml-1 text-sm font-normal text-[var(--tg-theme-hint-color)]">
                             ({cars.length})
                         </span>
                     )}
@@ -169,7 +169,7 @@ export function HomePage({ onSelectCar }: HomePageProps) {
                         </p>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-3">
+                    <div>
                         {cars.map((car) => {
                             const distance = latitude && longitude
                                 ? calculateDistance(latitude, longitude, car.latitude, car.longitude)
