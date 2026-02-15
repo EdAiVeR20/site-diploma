@@ -1,8 +1,7 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, memo, useMemo } from 'react';
 import { YandexMap, GeolocationWarning, LocationButton, CarCarousel } from '../components';
 import { useAppDispatch, useAppSelector } from '../store';
 import { fetchAvailableCars } from '../store/slices/carsSlice';
-import { setGeolocation, setGeolocationError, setGeolocationLoading } from '../store/slices/uiSlice';
 import type { Car } from '../types';
 
 interface HomePageProps {
@@ -10,66 +9,22 @@ interface HomePageProps {
     onOpenDrawer: () => void;
 }
 
-export function HomePage({ onSelectCar, onOpenDrawer }: HomePageProps) {
+export const HomePage = memo(function HomePage({ onSelectCar, onOpenDrawer }: HomePageProps) {
     const dispatch = useAppDispatch();
     const { cars, isLoading: carsLoading } = useAppSelector((state) => state.cars);
     const { geolocation } = useAppSelector((state) => state.ui);
     const { latitude, longitude, isLoading: geoLoading, error: geoError } = geolocation;
 
-    // State
+    // Local state
     const [geoWarningDismissed, setGeoWarningDismissed] = useState(false);
     const [selectedCarId, setSelectedCarId] = useState<string | undefined>();
     const [centerOnUserTrigger, setCenterOnUserTrigger] = useState(0);
 
-    // Refs
+    // Refs for dedup
     const hasFetchedCars = useRef(false);
     const prevCoordsRef = useRef<{ lat: number | null; lon: number | null }>({ lat: null, lon: null });
-    const watchIdRef = useRef<number | null>(null);
 
-    // Initialize geolocation with watchPosition (single permission, continuous background updates)
-    useEffect(() => {
-        if (!navigator.geolocation) {
-            dispatch(setGeolocationError('Геолокация не поддерживается браузером'));
-            dispatch(setGeolocationLoading(false));
-            return;
-        }
-
-        dispatch(setGeolocationLoading(true));
-
-        watchIdRef.current = navigator.geolocation.watchPosition(
-            (position) => {
-                dispatch(setGeolocation({
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                    accuracy: position.coords.accuracy,
-                }));
-            },
-            (err) => {
-                let errorMessage = 'Не удалось определить местоположение';
-                switch (err.code) {
-                    case err.PERMISSION_DENIED:
-                        errorMessage = 'Доступ к геолокации запрещён';
-                        break;
-                    case err.POSITION_UNAVAILABLE:
-                        errorMessage = 'Местоположение недоступно';
-                        break;
-                    case err.TIMEOUT:
-                        errorMessage = 'Превышено время ожидания';
-                        break;
-                }
-                dispatch(setGeolocationError(errorMessage));
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
-        );
-
-        return () => {
-            if (watchIdRef.current !== null) {
-                navigator.geolocation.clearWatch(watchIdRef.current);
-            }
-        };
-    }, [dispatch]);
-
-    // Fetch cars
+    // Fetch cars (NO geolocation logic here — handled by useGeolocation in App)
     useEffect(() => {
         const coordsChanged = prevCoordsRef.current.lat !== latitude || prevCoordsRef.current.lon !== longitude;
 
@@ -85,23 +40,30 @@ export function HomePage({ onSelectCar, onOpenDrawer }: HomePageProps) {
         }
     }, [dispatch, latitude, longitude]);
 
-    // Handle car selection (single tap) — focuses map on car
+    // Memoized handlers
     const handleCarSelect = useCallback((car: Car) => {
         setSelectedCarId(car.id);
     }, []);
 
-    // Handle car double tap — opens rental page
     const handleCarDoubleTap = useCallback((car: Car) => {
         onSelectCar(car);
     }, [onSelectCar]);
 
-    // Handle center on user
     const handleCenterOnUser = useCallback(() => {
         setCenterOnUserTrigger(prev => prev + 1);
         setSelectedCarId(undefined);
     }, []);
 
+    const handleDismissGeoWarning = useCallback(() => {
+        setGeoWarningDismissed(true);
+    }, []);
+
     const showGeoWarning = !geoLoading && geoError && !geoWarningDismissed;
+
+    const userLocation = useMemo(
+        () => latitude && longitude ? { latitude, longitude } : undefined,
+        [latitude, longitude]
+    );
 
     return (
         <div className="relative h-full w-full overflow-hidden">
@@ -110,7 +72,7 @@ export function HomePage({ onSelectCar, onOpenDrawer }: HomePageProps) {
                 <div className="absolute top-0 left-0 right-0 z-40">
                     <GeolocationWarning
                         message="Включите геолокацию для точного определения машин"
-                        onDismiss={() => setGeoWarningDismissed(true)}
+                        onDismiss={handleDismissGeoWarning}
                     />
                 </div>
             )}
@@ -134,7 +96,7 @@ export function HomePage({ onSelectCar, onOpenDrawer }: HomePageProps) {
             {/* Full-screen map */}
             <YandexMap
                 cars={cars}
-                userLocation={latitude && longitude ? { latitude, longitude } : undefined}
+                userLocation={userLocation}
                 onCarSelect={handleCarSelect}
                 onCarDoubleTap={handleCarDoubleTap}
                 selectedCarId={selectedCarId}
@@ -173,4 +135,4 @@ export function HomePage({ onSelectCar, onOpenDrawer }: HomePageProps) {
             )}
         </div>
     );
-}
+});

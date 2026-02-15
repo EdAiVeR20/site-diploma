@@ -20,7 +20,7 @@ export const store = configureStore({
         getDefaultMiddleware({
             serializableCheck: {
                 // Ignore non-serializable File objects in verification
-                ignoredActions: ['profile/setVerificationFiles'],
+                ignoredActions: ['profile/setVerificationFile'],
                 ignoredPaths: ['profile.verificationFiles'],
             },
         }),

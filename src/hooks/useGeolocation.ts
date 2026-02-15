@@ -1,100 +1,55 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
+import { useAppDispatch } from '../store';
+import { setGeolocation, setGeolocationError, setGeolocationLoading } from '../store/slices/uiSlice';
 
-interface GeolocationState {
-    latitude: number | null;
-    longitude: number | null;
-    accuracy: number | null;
-    loading: boolean;
-    error: string | null;
-}
+/**
+ * App-level geolocation hook. Call once in App (always mounted).
+ * Uses watchPosition for continuous background updates.
+ * Dispatches to Redux — all components read from store.
+ */
+export function useGeolocation() {
+    const dispatch = useAppDispatch();
+    const watchIdRef = useRef<number | null>(null);
 
-interface UseGeolocationOptions {
-    enableHighAccuracy?: boolean;
-    timeout?: number;
-    maximumAge?: number;
-    watch?: boolean;
-}
-
-export function useGeolocation(options: UseGeolocationOptions = {}): GeolocationState & { refresh: () => void } {
-    const {
-        enableHighAccuracy = true,
-        timeout = 10000,
-        maximumAge = 60000,
-        watch = false,
-    } = options;
-
-    const [state, setState] = useState<GeolocationState>({
-        latitude: null,
-        longitude: null,
-        accuracy: null,
-        loading: true,
-        error: null,
-    });
-
-    const handleSuccess = useCallback((position: GeolocationPosition) => {
-        setState({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            loading: false,
-            error: null,
-        });
-    }, []);
-
-    const handleError = useCallback((error: GeolocationPositionError) => {
-        let errorMessage = 'Не удалось определить местоположение';
-
-        switch (error.code) {
-            case error.PERMISSION_DENIED:
-                errorMessage = 'Доступ к геолокации запрещён';
-                break;
-            case error.POSITION_UNAVAILABLE:
-                errorMessage = 'Местоположение недоступно';
-                break;
-            case error.TIMEOUT:
-                errorMessage = 'Превышено время ожидания';
-                break;
-        }
-
-        setState((prev) => ({
-            ...prev,
-            loading: false,
-            error: errorMessage,
-        }));
-    }, []);
-
-    const getPosition = useCallback(() => {
+    useEffect(() => {
         if (!navigator.geolocation) {
-            setState((prev) => ({
-                ...prev,
-                loading: false,
-                error: 'Геолокация не поддерживается браузером',
-            }));
+            dispatch(setGeolocationError('Геолокация не поддерживается браузером'));
+            dispatch(setGeolocationLoading(false));
             return;
         }
 
-        setState((prev) => ({ ...prev, loading: true, error: null }));
+        dispatch(setGeolocationLoading(true));
 
-        navigator.geolocation.getCurrentPosition(handleSuccess, handleError, {
-            enableHighAccuracy,
-            timeout,
-            maximumAge,
-        });
-    }, [enableHighAccuracy, timeout, maximumAge, handleSuccess, handleError]);
+        watchIdRef.current = navigator.geolocation.watchPosition(
+            (position) => {
+                dispatch(setGeolocation({
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracy: position.coords.accuracy,
+                }));
+            },
+            (err) => {
+                let errorMessage = 'Не удалось определить местоположение';
+                switch (err.code) {
+                    case err.PERMISSION_DENIED:
+                        errorMessage = 'Доступ к геолокации запрещён';
+                        break;
+                    case err.POSITION_UNAVAILABLE:
+                        errorMessage = 'Местоположение недоступно';
+                        break;
+                    case err.TIMEOUT:
+                        errorMessage = 'Превышено время ожидания';
+                        break;
+                }
+                dispatch(setGeolocationError(errorMessage));
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+        );
 
-    useEffect(() => {
-        getPosition();
-
-        if (watch && navigator.geolocation) {
-            const watchId = navigator.geolocation.watchPosition(handleSuccess, handleError, {
-                enableHighAccuracy,
-                timeout,
-                maximumAge,
-            });
-
-            return () => navigator.geolocation.clearWatch(watchId);
-        }
-    }, [watch, enableHighAccuracy, timeout, maximumAge, handleSuccess, handleError, getPosition]);
-
-    return { ...state, refresh: getPosition };
+        return () => {
+            if (watchIdRef.current !== null) {
+                navigator.geolocation.clearWatch(watchIdRef.current);
+            }
+        };
+    }, [dispatch]);
 }

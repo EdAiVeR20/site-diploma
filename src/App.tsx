@@ -1,20 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import './index.css';
 import { Loader, SideDrawer } from './components';
 import { useTelegram } from './hooks/useTelegram';
+import { useGeolocation } from './hooks/useGeolocation';
 import { useAppDispatch, useAppSelector } from './store';
 import { loginWithTelegram, setTelegramUser, setAuthenticating } from './store/slices/authSlice';
 import { selectCar, clearSelectedCar } from './store/slices/carsSlice';
 import { setActiveTab, setTelegramReady } from './store/slices/uiSlice';
 import type { Car } from './types';
 
-// Pages
-import { HomePage } from './pages/HomePage';
-import { HistoryPage } from './pages/HistoryPage';
-import { ProfilePage } from './pages/ProfilePage';
-import { RentalPage } from './pages/RentalPage';
-import { VerificationPage } from './pages/VerificationPage';
+// Lazy-loaded pages
+const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })));
+const HistoryPage = lazy(() => import('./pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const RentalPage = lazy(() => import('./pages/RentalPage').then(m => ({ default: m.RentalPage })));
+const VerificationPage = lazy(() => import('./pages/VerificationPage').then(m => ({ default: m.VerificationPage })));
 
 // DEV MODE: Set to true to bypass Telegram and use mock data
 const DEV_MODE = false;
@@ -24,6 +25,9 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isReady, user: tgUser } = useTelegram();
+
+  // App-level geolocation — single watchPosition, never remounts
+  useGeolocation();
 
   // Redux state
   const { isAuthenticating } = useAppSelector((state) => state.auth);
@@ -80,46 +84,42 @@ function AppContent() {
     authenticate();
   }, [isReady, tgUser, dispatch]);
 
-  // Handle car selection (from carousel double-tap)
-  const handleSelectCar = (car: Car) => {
+  // Memoized handlers
+  const handleSelectCar = useCallback((car: Car) => {
     dispatch(selectCar(car));
     navigate('/rental');
-  };
+  }, [dispatch, navigate]);
 
-  // Handle drawer navigation
-  const handleDrawerNavigate = (page: 'history' | 'profile') => {
+  const handleDrawerNavigate = useCallback((page: 'history' | 'profile') => {
     dispatch(clearSelectedCar());
-    switch (page) {
-      case 'history':
-        navigate('/history');
-        break;
-      case 'profile':
-        navigate('/profile');
-        break;
-    }
-  };
+    navigate(`/${page}`);
+  }, [dispatch, navigate]);
 
-  // Handle rental success
-  const handleRentalSuccess = () => {
+  const handleRentalSuccess = useCallback(() => {
     dispatch(clearSelectedCar());
     navigate('/history');
-  };
+  }, [dispatch, navigate]);
 
-  // Handle close (back navigation)
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     dispatch(clearSelectedCar());
     navigate('/');
-  };
+  }, [dispatch, navigate]);
 
-  // Handle navigation to verification
-  const handleNavigateToVerification = () => {
+  const handleNavigateToVerification = useCallback(() => {
     navigate('/verification');
-  };
+  }, [navigate]);
 
-  // Handle verification success
-  const handleVerificationSuccess = () => {
+  const handleVerificationSuccess = useCallback(() => {
     navigate('/profile');
-  };
+  }, [navigate]);
+
+  const handleOpenDrawer = useCallback(() => {
+    setIsDrawerOpen(true);
+  }, []);
+
+  const handleCloseDrawer = useCallback(() => {
+    setIsDrawerOpen(false);
+  }, []);
 
   // Loading state
   if (!DEV_MODE && (!isTelegramReady || isAuthenticating)) {
@@ -143,74 +143,76 @@ function AppContent() {
       {/* Side Drawer */}
       <SideDrawer
         isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
+        onClose={handleCloseDrawer}
         onNavigate={handleDrawerNavigate}
       />
 
       <div className={DEV_MODE ? 'h-full pt-6' : 'h-full'}>
-        {/* Main Map View */}
-        {isMainView && (
-          <HomePage
-            onSelectCar={handleSelectCar}
-            onOpenDrawer={() => setIsDrawerOpen(true)}
-          />
-        )}
+        <Suspense fallback={<Loader fullScreen text="Загрузка..." />}>
+          {/* Main Map View */}
+          {isMainView && (
+            <HomePage
+              onSelectCar={handleSelectCar}
+              onOpenDrawer={handleOpenDrawer}
+            />
+          )}
 
-        {/* Sub Pages (History, Profile) */}
-        {isSubPage && (
-          <div className="h-full flex flex-col">
-            {/* Back button header */}
-            <div className="flex items-center gap-4 p-4 bg-[var(--tg-theme-bg-color)] border-b border-[var(--tg-theme-hint-color)]/10">
-              <button
-                onClick={handleClose}
-                className="w-10 h-10 rounded-full bg-[var(--tg-theme-secondary-bg-color)] flex items-center justify-center"
-              >
-                <svg className="w-5 h-5 text-[var(--tg-theme-text-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <h1 className="text-lg font-semibold text-[var(--tg-theme-text-color)]">
-                {location.pathname === '/history' ? 'История поездок' : 'Профиль'}
-              </h1>
+          {/* Sub Pages (History, Profile) */}
+          {isSubPage && (
+            <div className="h-full flex flex-col">
+              {/* Back button header */}
+              <div className="flex items-center gap-4 p-4 bg-[var(--tg-theme-bg-color)] border-b border-[var(--tg-theme-hint-color)]/10">
+                <button
+                  onClick={handleClose}
+                  className="w-10 h-10 rounded-full bg-[var(--tg-theme-secondary-bg-color)] flex items-center justify-center"
+                >
+                  <svg className="w-5 h-5 text-[var(--tg-theme-text-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <h1 className="text-lg font-semibold text-[var(--tg-theme-text-color)]">
+                  {location.pathname === '/history' ? 'История поездок' : 'Профиль'}
+                </h1>
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                <Routes>
+                  <Route path="/history" element={<HistoryPage />} />
+                  <Route path="/profile" element={<ProfilePage onNavigateToVerification={handleNavigateToVerification} />} />
+                </Routes>
+              </div>
             </div>
+          )}
 
-            <div className="flex-1 overflow-y-auto">
-              <Routes>
-                <Route path="/history" element={<HistoryPage />} />
-                <Route path="/profile" element={<ProfilePage onNavigateToVerification={handleNavigateToVerification} />} />
-              </Routes>
-            </div>
-          </div>
-        )}
-
-        {/* Full Page Routes (Rental, Verification) */}
-        {isFullPage && (
-          <Routes>
-            <Route
-              path="/rental"
-              element={
-                selectedCar ? (
-                  <RentalPage
-                    car={selectedCar}
+          {/* Full Page Routes (Rental, Verification) */}
+          {isFullPage && (
+            <Routes>
+              <Route
+                path="/rental"
+                element={
+                  selectedCar ? (
+                    <RentalPage
+                      car={selectedCar}
+                      onClose={handleClose}
+                      onSuccess={handleRentalSuccess}
+                    />
+                  ) : (
+                    <Navigate to="/" replace />
+                  )
+                }
+              />
+              <Route
+                path="/verification"
+                element={
+                  <VerificationPage
                     onClose={handleClose}
-                    onSuccess={handleRentalSuccess}
+                    onSuccess={handleVerificationSuccess}
                   />
-                ) : (
-                  <Navigate to="/" replace />
-                )
-              }
-            />
-            <Route
-              path="/verification"
-              element={
-                <VerificationPage
-                  onClose={handleClose}
-                  onSuccess={handleVerificationSuccess}
-                />
-              }
-            />
-          </Routes>
-        )}
+                }
+              />
+            </Routes>
+          )}
+        </Suspense>
       </div>
     </div>
   );

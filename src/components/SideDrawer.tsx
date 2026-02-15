@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, memo } from 'react';
 import { useAppSelector } from '../store';
 import { useTelegram } from '../hooks/useTelegram';
 
@@ -8,7 +8,7 @@ interface SideDrawerProps {
     onNavigate: (page: 'history' | 'profile') => void;
 }
 
-export function SideDrawer({ isOpen, onClose, onNavigate }: SideDrawerProps) {
+export const SideDrawer = memo(function SideDrawer({ isOpen, onClose, onNavigate }: SideDrawerProps) {
     const drawerRef = useRef<HTMLDivElement>(null);
     const { user: tgUser } = useTelegram();
     const { telegramUser } = useAppSelector((state) => state.auth);
@@ -139,4 +139,4 @@ export function SideDrawer({ isOpen, onClose, onNavigate }: SideDrawerProps) {
             </div>
         </>
     );
-}
+});

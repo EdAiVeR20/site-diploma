@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, memo } from 'react';
 import type { Car } from '../types';
 
 interface CarCarouselProps {
@@ -47,7 +47,7 @@ function getHourlyPrice(car: Car): string {
     return tariff ? `${tariff.pricePerUnit}` : '—';
 }
 
-export function CarCarousel({
+function CarCarouselInner({
     cars,
     selectedCarId,
     onCarSelect,
@@ -195,3 +195,5 @@ export function CarCarousel({
         </div>
     );
 }
+
+export const CarCarousel = memo(CarCarouselInner);
