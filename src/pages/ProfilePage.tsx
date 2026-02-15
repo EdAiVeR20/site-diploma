@@ -52,14 +52,22 @@ export function ProfilePage({ onNavigateToVerification }: ProfilePageProps) {
     const verificationInfo = getVerificationStatusText(profile?.verificationStatus ?? 'none');
 
     return (
-        <div className="flex flex-col min-h-full px-4 pt-6 pb-24">
+        <div className="flex flex-col min-h-full px-4 pt-4 pb-6">
             {/* Avatar and Name */}
             <div className="flex flex-col items-center mb-6 animate-slide-up">
                 <div className="avatar-ring mb-3">
                     <div className="avatar-inner">
-                        <div className="w-20 h-20 rounded-full bg-[var(--color-accent)] flex items-center justify-center text-white text-2xl font-bold">
-                            {displayUser?.firstName?.charAt(0) || profile?.firstName?.charAt(0) || '?'}
-                        </div>
+                        {tgUser?.photoUrl ? (
+                            <img
+                                src={tgUser.photoUrl}
+                                alt={displayUser?.firstName || ''}
+                                className="w-20 h-20 rounded-full object-cover"
+                            />
+                        ) : (
+                            <div className="w-20 h-20 rounded-full bg-[var(--color-accent)] flex items-center justify-center text-white text-2xl font-bold">
+                                {displayUser?.firstName?.charAt(0) || profile?.firstName?.charAt(0) || '?'}
+                            </div>
+                        )}
                     </div>
                 </div>
                 <h1 className="text-xl font-bold text-[var(--tg-theme-text-color)]">
@@ -83,23 +91,23 @@ export function ProfilePage({ onNavigateToVerification }: ProfilePageProps) {
             {/* Info Cards */}
             <div className="space-y-3 mb-6">
                 {/* Verification Status */}
-                <div className="flex items-center justify-between p-4 card animate-slide-up" style={{ animationDelay: '0.15s' }}>
+                <div className="p-4 card animate-slide-up" style={{ animationDelay: '0.15s' }}>
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-[var(--color-surface)] flex items-center justify-center">
                             <svg className="w-5 h-5 text-[var(--tg-theme-hint-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                             </svg>
                         </div>
-                        <div>
+                        <div className="flex-1 min-w-0">
                             <p className="text-sm text-[var(--tg-theme-hint-color)]">Верификация</p>
                             <p className={`font-medium ${verificationInfo.badgeClass}`}>{verificationInfo.text}</p>
                         </div>
+                        {profile?.verificationStatus !== 'approved' && profile?.verificationStatus !== 'pending' && (
+                            <Button size="sm" onClick={onNavigateToVerification}>
+                                Пройти
+                            </Button>
+                        )}
                     </div>
-                    {profile?.verificationStatus !== 'approved' && profile?.verificationStatus !== 'pending' && (
-                        <Button size="sm" onClick={onNavigateToVerification}>
-                            Пройти
-                        </Button>
-                    )}
                 </div>
 
                 {/* Active Rental */}
@@ -113,6 +121,23 @@ export function ProfilePage({ onNavigateToVerification }: ProfilePageProps) {
                         <div>
                             <p className="font-medium text-green-500">Активная аренда</p>
                             <p className="text-sm text-[var(--tg-theme-hint-color)]">У вас есть активная поездка</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Phone Number */}
+                {displayUser && (
+                    <div className="flex items-center gap-3 p-4 card animate-slide-up" style={{ animationDelay: '0.22s' }}>
+                        <div className="w-10 h-10 rounded-full bg-[var(--color-surface)] flex items-center justify-center">
+                            <svg className="w-5 h-5 text-[var(--tg-theme-hint-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-sm text-[var(--tg-theme-hint-color)]">Телефон</p>
+                            <p className="font-medium text-[var(--tg-theme-text-color)]">
+                                Привязан к Telegram
+                            </p>
                         </div>
                     </div>
                 )}

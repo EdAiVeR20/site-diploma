@@ -29,24 +29,14 @@ export function HistoryPage() {
         return mins > 0 ? `${hours} ч ${mins} мин` : `${hours} ч`;
     };
 
-    const getStatusBadge = (status: Rental['status']) => {
-        const styles = {
-            completed: 'bg-green-500/10 text-green-500',
-            active: 'bg-blue-500/10 text-blue-500',
-            pending: 'bg-yellow-500/10 text-yellow-500',
-            cancelled: 'bg-red-500/10 text-red-500',
+    const getStatusInfo = (status: Rental['status']) => {
+        const config = {
+            completed: { label: 'Завершена', class: 'badge-success' },
+            active: { label: 'Активна', class: 'bg-blue-500/15 text-blue-400' },
+            pending: { label: 'Ожидает', class: 'badge-warning' },
+            cancelled: { label: 'Отменена', class: 'badge-error' },
         };
-        const labels = {
-            completed: 'Завершена',
-            active: 'Активна',
-            pending: 'Ожидает',
-            cancelled: 'Отменена',
-        };
-        return (
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${styles[status]}`}>
-                {labels[status]}
-            </span>
-        );
+        return config[status];
     };
 
     if (isLoading) {
@@ -54,16 +44,14 @@ export function HistoryPage() {
     }
 
     return (
-        <div className="flex flex-col min-h-full px-4 pt-6 pb-20">
-            <h1 className="text-xl font-bold text-[var(--tg-theme-text-color)] mb-4">
-                История поездок
-            </h1>
-
+        <div className="flex flex-col min-h-full pt-4 pb-6">
             {rentals.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center">
-                    <svg className="w-16 h-16 text-[var(--tg-theme-hint-color)] mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
+                    <div className="w-16 h-16 rounded-full bg-[var(--color-surface)] flex items-center justify-center mb-4">
+                        <svg className="w-8 h-8 text-[var(--tg-theme-hint-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
                     <h2 className="text-lg font-semibold text-[var(--tg-theme-text-color)] mb-2">
                         Пока нет поездок
                     </h2>
@@ -72,46 +60,55 @@ export function HistoryPage() {
                     </p>
                 </div>
             ) : (
-                <div className="space-y-3">
-                    {rentals.map((rental) => (
-                        <div
-                            key={rental.id}
-                            className="bg-[var(--tg-theme-secondary-bg-color)] rounded-xl p-4"
-                        >
-                            <div className="flex items-start justify-between mb-2">
-                                <div>
-                                    <h3 className="font-semibold text-[var(--tg-theme-text-color)]">
-                                        {rental.car.brand} {rental.car.model}
-                                    </h3>
-                                    <p className="text-sm text-[var(--tg-theme-hint-color)]">
-                                        {formatDate(rental.startTime)}
-                                    </p>
+                <div className="flex flex-col">
+                    {rentals.map((rental, index) => {
+                        const statusInfo = getStatusInfo(rental.status);
+                        return (
+                            <div
+                                key={rental.id}
+                                className={`px-4 py-4 ${index !== rentals.length - 1 ? 'border-b border-[var(--color-accent)]/10' : ''}`}
+                            >
+                                {/* Header: Car name + Status */}
+                                <div className="flex items-start justify-between mb-2">
+                                    <div>
+                                        <h3 className="font-semibold text-[var(--tg-theme-text-color)] text-base">
+                                            {rental.car.brand} {rental.car.model}
+                                        </h3>
+                                        <p className="text-xs text-[var(--tg-theme-hint-color)] mt-0.5">
+                                            {formatDate(rental.startTime)}
+                                        </p>
+                                    </div>
+                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusInfo.class}`}>
+                                        {statusInfo.label}
+                                    </span>
                                 </div>
-                                {getStatusBadge(rental.status)}
-                            </div>
 
-                            <div className="flex items-center justify-between pt-2 border-t border-[var(--tg-theme-hint-color)]/20">
-                                <div className="flex items-center gap-4">
-                                    {rental.duration && (
-                                        <div className="flex items-center gap-1 text-sm text-[var(--tg-theme-hint-color)]">
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            {formatDuration(rental.duration)}
+                                {/* Footer: Duration, Tariff, Price */}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3 text-sm">
+                                        {rental.duration && (
+                                            <div className="flex items-center gap-1 text-[var(--tg-theme-hint-color)]">
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <span>{formatDuration(rental.duration)}</span>
+                                            </div>
+                                        )}
+                                        <span className="text-[var(--tg-theme-hint-color)]">
+                                            {rental.tariff.name}
+                                        </span>
+                                    </div>
+                                    {rental.totalCost && (
+                                        <div className="text-right">
+                                            <span className="text-lg font-bold price-accent">
+                                                {rental.totalCost.toLocaleString('ru-RU')} ₽
+                                            </span>
                                         </div>
                                     )}
-                                    <div className="text-sm text-[var(--tg-theme-hint-color)]">
-                                        {rental.tariff.name}
-                                    </div>
                                 </div>
-                                {rental.totalCost && (
-                                    <div className="font-bold text-[var(--tg-theme-text-color)]">
-                                        {rental.totalCost} ₽
-                                    </div>
-                                )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>

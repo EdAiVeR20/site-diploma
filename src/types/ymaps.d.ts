@@ -1,9 +1,9 @@
 export { };
 
 declare global {
-    const ymaps: any;
+    const ymaps3: any;
 
     interface Window {
-        ymaps: any;
+        ymaps3: any;
     }
 }

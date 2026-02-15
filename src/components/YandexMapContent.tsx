@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Car } from '../types';
-import type { YMapLocationRequest } from '@yandex/ymaps3-types';
-import { reactify } from '../utils/ymaps';
 
-// Import components from utility with top-level await
-// This makes this module async
-const {
-    YMap,
-    YMapDefaultSchemeLayer,
-    YMapDefaultFeaturesLayer,
-    YMapMarker
-} = await import('../utils/ymaps');
+// Lazy-load the reactified ymaps components
+const ymapsReady = (async () => {
+    await ymaps3.ready;
+    const reactifyModule = await ymaps3.import('@yandex/ymaps3-reactify');
+    const React = await import('react');
+    const ReactDOM = await import('react-dom');
+    const reactify = reactifyModule.reactify.bindTo(React, ReactDOM);
+    const components = reactify.module(ymaps3);
+    return { components, reactify };
+})();
 
 interface YandexMapProps {
     cars: Car[];
@@ -19,33 +19,103 @@ interface YandexMapProps {
         longitude: number;
     };
     onCarSelect?: (car: Car) => void;
+    onCarDoubleTap?: (car: Car) => void;
+    selectedCarId?: string;
+    centerOnUserTrigger?: number;
     className?: string;
     isDark: boolean;
 }
 
-const YandexMapContent = ({ cars, userLocation, onCarSelect, isDark }: YandexMapProps) => {
-    // Initial camera position (Moscow)
-    const LOCATION: YMapLocationRequest = {
-        center: [37.6173, 55.7558], // [lon, lat]
-        zoom: 12
+// We need to await the module at the top level (Vite supports top-level await)
+const { components, reactify } = await ymapsReady;
+const { YMap, YMapDefaultSchemeLayer, YMapDefaultFeaturesLayer, YMapMarker } = components;
+
+const YandexMapContent = ({
+    cars,
+    userLocation,
+    onCarSelect,
+    onCarDoubleTap,
+    selectedCarId,
+    centerOnUserTrigger,
+    isDark
+}: YandexMapProps) => {
+    const DEFAULT_CENTER: [number, number] = [37.6173, 55.7558];
+    const DEFAULT_ZOOM = 12;
+
+    const hasCenteredOnUser = useRef(false);
+    const prevCenterTrigger = useRef(centerOnUserTrigger);
+    const lastMarkerTapRef = useRef<{ id: string; time: number } | null>(null);
+
+    // Compute initial location
+    const getInitialLocation = () => {
+        if (userLocation && !hasCenteredOnUser.current) {
+            hasCenteredOnUser.current = true;
+            return {
+                center: [userLocation.longitude, userLocation.latitude] as [number, number],
+                zoom: 15
+            };
+        }
+        return { center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM };
     };
 
-    const [location, setLocation] = useState(LOCATION);
+    const [location, setLocation] = useState(getInitialLocation);
+    const [mapKey, setMapKey] = useState(0);
 
-    // Update location when user position changes
+    // Center on user when location first becomes available
     useEffect(() => {
-        if (userLocation) {
+        if (userLocation && !hasCenteredOnUser.current) {
+            hasCenteredOnUser.current = true;
             setLocation({
                 center: [userLocation.longitude, userLocation.latitude],
-                zoom: 14,
-                duration: 1000
+                zoom: 15
             });
+            setMapKey(prev => prev + 1);
         }
     }, [userLocation]);
 
+    // Handle centerOnUserTrigger changes (location button pressed)
+    useEffect(() => {
+        if (centerOnUserTrigger !== prevCenterTrigger.current && userLocation) {
+            prevCenterTrigger.current = centerOnUserTrigger;
+            setLocation({
+                center: [userLocation.longitude, userLocation.latitude],
+                zoom: 16
+            });
+            setMapKey(prev => prev + 1);
+        }
+    }, [centerOnUserTrigger, userLocation]);
+
+    // Center on selected car
+    useEffect(() => {
+        if (selectedCarId) {
+            const car = cars.find(c => c.id === selectedCarId);
+            if (car) {
+                setLocation({
+                    center: [car.longitude, car.latitude],
+                    zoom: 16
+                });
+                setMapKey(prev => prev + 1);
+            }
+        }
+    }, [selectedCarId, cars]);
+
+    // Handle marker tap with double-tap detection
+    const handleMarkerTap = useCallback((car: Car) => {
+        const now = Date.now();
+        const lastTap = lastMarkerTapRef.current;
+
+        if (lastTap && lastTap.id === car.id && now - lastTap.time < 400) {
+            onCarDoubleTap?.(car);
+            lastMarkerTapRef.current = null;
+        } else {
+            onCarSelect?.(car);
+            lastMarkerTapRef.current = { id: car.id, time: now };
+        }
+    }, [onCarSelect, onCarDoubleTap]);
+
     return (
-        // @ts-ignore - types mismatch for reactified components
         <YMap
+            key={mapKey}
             location={reactify.useDefault(location)}
             theme={isDark ? 'dark' : 'light'}
         >
@@ -56,14 +126,15 @@ const YandexMapContent = ({ cars, userLocation, onCarSelect, isDark }: YandexMap
             {userLocation && (
                 <YMapMarker coordinates={[userLocation.longitude, userLocation.latitude]}>
                     <div className="relative" style={{ transform: 'translate(-50%, -50%)' }}>
-                        <div className="w-6 h-6 bg-blue-500 rounded-full shadow-lg border-2 border-white animate-pulse"></div>
-                        <div className="absolute inset-0 w-6 h-6 bg-blue-500/30 rounded-full animate-ping"></div>
+                        <div className="w-5 h-5 bg-blue-500 rounded-full shadow-lg border-2 border-white"></div>
+                        <div className="absolute inset-0 w-5 h-5 bg-blue-400/40 rounded-full animate-ping"></div>
                     </div>
                 </YMapMarker>
             )}
 
             {/* Car Markers */}
             {cars.map((car) => {
+                const isSelected = car.id === selectedCarId;
                 const hourlyTariff = car.tariffs.find(t => t.type === 'hourly');
                 const priceText = hourlyTariff ? `${hourlyTariff.pricePerUnit} ₽` : '';
 
@@ -71,26 +142,33 @@ const YandexMapContent = ({ cars, userLocation, onCarSelect, isDark }: YandexMap
                     <YMapMarker
                         key={car.id}
                         coordinates={[car.longitude, car.latitude]}
-                        onClick={() => onCarSelect?.(car)}
+                        onClick={() => handleMarkerTap(car)}
                     >
-                        <div className="relative group cursor-pointer" style={{ width: '40px', height: '40px', transform: 'translate(-50%, -100%)' }}>
-                            {/* Marker Icon */}
-                            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full shadow-lg flex items-center justify-center border-2 border-white transition-transform group-hover:scale-110">
+                        <div
+                            className={`relative cursor-pointer transition-all duration-200 ${isSelected ? 'z-50 scale-125' : 'z-10'}`}
+                            style={{ transform: 'translate(-50%, -100%)' }}
+                        >
+                            <div className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center border-2 border-white transition-all ${isSelected
+                                ? 'bg-gradient-to-br from-green-400 to-green-600'
+                                : 'bg-gradient-to-br from-violet-500 to-purple-600'
+                                }`}>
                                 <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" />
                                 </svg>
                             </div>
 
-                            {/* Triangle */}
-                            <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-6 border-transparent border-t-purple-600"></div>
+                            <div className={`absolute -bottom-1.5 left-1/2 transform -translate-x-1/2 w-0 h-0 
+                                border-l-[6px] border-r-[6px] border-t-[8px] border-transparent ${isSelected ? 'border-t-green-600' : 'border-t-purple-600'
+                                }`}></div>
 
-                            {/* Info Popup */}
-                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 w-32">
-                                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-2 text-center border border-gray-100 dark:border-gray-700">
-                                    <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{car.brand}</p>
-                                    <p className="text-[10px] text-violet-600 dark:text-violet-400 font-medium">{priceText}</p>
+                            {isSelected && priceText && (
+                                <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 
+                                    bg-[var(--tg-theme-bg-color)] px-2 py-1 rounded-lg shadow-lg 
+                                    text-xs font-semibold whitespace-nowrap border border-[var(--color-accent)]/30
+                                ">
+                                    <span className="text-[var(--color-accent)]">{priceText}/час</span>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </YMapMarker>
                 );

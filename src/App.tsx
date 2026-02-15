@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import './index.css';
-import { BottomNav, Loader } from './components';
+import { Loader, SideDrawer } from './components';
 import { useTelegram } from './hooks/useTelegram';
 import { useAppDispatch, useAppSelector } from './store';
 import { loginWithTelegram, setTelegramUser, setAuthenticating } from './store/slices/authSlice';
@@ -9,7 +9,7 @@ import { selectCar, clearSelectedCar } from './store/slices/carsSlice';
 import { setActiveTab, setTelegramReady } from './store/slices/uiSlice';
 import type { Car } from './types';
 
-// Direct imports for pages (no lazy loading for pages)
+// Pages
 import { HomePage } from './pages/HomePage';
 import { HistoryPage } from './pages/HistoryPage';
 import { ProfilePage } from './pages/ProfilePage';
@@ -19,7 +19,6 @@ import { VerificationPage } from './pages/VerificationPage';
 // DEV MODE: Set to true to bypass Telegram and use mock data
 const DEV_MODE = false;
 
-// Inner component that uses router hooks
 function AppContent() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -30,6 +29,9 @@ function AppContent() {
   const { isAuthenticating } = useAppSelector((state) => state.auth);
   const { selectedCar } = useAppSelector((state) => state.cars);
   const { isTelegramReady } = useAppSelector((state) => state.ui);
+
+  // Drawer state
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Sync activeTab with current route
   useEffect(() => {
@@ -43,17 +45,8 @@ function AppContent() {
     }
   }, [location.pathname, dispatch]);
 
-  // Get active tab from route
-  const getActiveTab = (): 'home' | 'history' | 'profile' => {
-    const path = location.pathname;
-    if (path === '/history') return 'history';
-    if (path === '/profile' || path === '/verification') return 'profile';
-    return 'home';
-  };
-
   // Initialize Telegram and authenticate
   useEffect(() => {
-    // DEV MODE: Skip Telegram check
     if (DEV_MODE) {
       dispatch(setTelegramReady(true));
       dispatch(setTelegramUser({
@@ -70,12 +63,10 @@ function AppContent() {
 
     dispatch(setTelegramReady(true));
 
-    // Set Telegram user data
     if (tgUser) {
       dispatch(setTelegramUser(tgUser));
     }
 
-    // Authenticate with backend
     const authenticate = async () => {
       try {
         await dispatch(loginWithTelegram({ telegramUser: tgUser || undefined })).unwrap();
@@ -89,19 +80,16 @@ function AppContent() {
     authenticate();
   }, [isReady, tgUser, dispatch]);
 
-  // Handle car selection
+  // Handle car selection (from carousel double-tap)
   const handleSelectCar = (car: Car) => {
     dispatch(selectCar(car));
     navigate('/rental');
   };
 
-  // Handle navigation
-  const handleNavigate = (tab: 'home' | 'history' | 'profile') => {
+  // Handle drawer navigation
+  const handleDrawerNavigate = (page: 'history' | 'profile') => {
     dispatch(clearSelectedCar());
-    switch (tab) {
-      case 'home':
-        navigate('/');
-        break;
+    switch (page) {
       case 'history':
         navigate('/history');
         break;
@@ -117,10 +105,10 @@ function AppContent() {
     navigate('/history');
   };
 
-  // Handle close rental/verification
+  // Handle close (back navigation)
   const handleClose = () => {
     dispatch(clearSelectedCar());
-    navigate(-1);
+    navigate('/');
   };
 
   // Handle navigation to verification
@@ -133,37 +121,70 @@ function AppContent() {
     navigate('/profile');
   };
 
-  // Loading state (skip in DEV_MODE)
+  // Loading state
   if (!DEV_MODE && (!isTelegramReady || isAuthenticating)) {
     return <Loader fullScreen text="Загрузка..." />;
   }
 
-  // Check if current route should show bottom nav
-  const showBottomNav = ['/', '/home', '/history', '/profile'].includes(location.pathname);
+  // Determine if we're on the main map view
+  const isMainView = ['/', '/home'].includes(location.pathname);
+  const isSubPage = ['/history', '/profile'].includes(location.pathname);
+  const isFullPage = ['/rental', '/verification'].includes(location.pathname);
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-[var(--tg-theme-bg-color)]">
       {/* DEV MODE indicator */}
       {DEV_MODE && (
-        <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-black text-xs text-center py-1 z-50">
+        <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-black text-xs text-center py-1 z-[100]">
           🔧 DEV MODE — Telegram отключён
         </div>
       )}
 
+      {/* Side Drawer */}
+      <SideDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        onNavigate={handleDrawerNavigate}
+      />
+
       <div className={DEV_MODE ? 'h-full pt-6' : 'h-full'}>
-        {showBottomNav ? (
-          <>
-            <main className="h-[calc(100%-3.5rem)] overflow-hidden">
+        {/* Main Map View */}
+        {isMainView && (
+          <HomePage
+            onSelectCar={handleSelectCar}
+            onOpenDrawer={() => setIsDrawerOpen(true)}
+          />
+        )}
+
+        {/* Sub Pages (History, Profile) */}
+        {isSubPage && (
+          <div className="h-full flex flex-col">
+            {/* Back button header */}
+            <div className="flex items-center gap-4 p-4 bg-[var(--tg-theme-bg-color)] border-b border-[var(--tg-theme-hint-color)]/10">
+              <button
+                onClick={handleClose}
+                className="w-10 h-10 rounded-full bg-[var(--tg-theme-secondary-bg-color)] flex items-center justify-center"
+              >
+                <svg className="w-5 h-5 text-[var(--tg-theme-text-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <h1 className="text-lg font-semibold text-[var(--tg-theme-text-color)]">
+                {location.pathname === '/history' ? 'История поездок' : 'Профиль'}
+              </h1>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
               <Routes>
-                <Route path="/" element={<HomePage onSelectCar={handleSelectCar} />} />
-                <Route path="/home" element={<HomePage onSelectCar={handleSelectCar} />} />
                 <Route path="/history" element={<HistoryPage />} />
                 <Route path="/profile" element={<ProfilePage onNavigateToVerification={handleNavigateToVerification} />} />
               </Routes>
-            </main>
-            <BottomNav activeTab={getActiveTab()} onNavigate={handleNavigate} />
-          </>
-        ) : (
+            </div>
+          </div>
+        )}
+
+        {/* Full Page Routes (Rental, Verification) */}
+        {isFullPage && (
           <Routes>
             <Route
               path="/rental"
@@ -195,7 +216,6 @@ function AppContent() {
   );
 }
 
-// Main App with Router wrapper
 function App() {
   return (
     <BrowserRouter>
