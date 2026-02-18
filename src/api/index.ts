@@ -35,13 +35,8 @@ export const carsApi = {
     /**
      * Получить список доступных машин
      */
-    getAvailable: async (lat?: number, lon?: number, radius?: number): Promise<CarsResponse> => {
-        const params = new URLSearchParams();
-        if (lat !== undefined) params.append('lat', lat.toString());
-        if (lon !== undefined) params.append('lon', lon.toString());
-        if (radius !== undefined) params.append('radius', radius.toString());
-
-        const { data } = await apiClient.get<CarsResponse>(`/cars?${params.toString()}`);
+    getAvailable: async (_lat?: number, _lon?: number, _radius?: number): Promise<CarsResponse> => {
+        const { data } = await apiClient.get<CarsResponse>('/cars/available');
         return data;
     },
 
