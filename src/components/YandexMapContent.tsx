@@ -44,7 +44,7 @@ const YandexMapContent = ({
 
     const hasCenteredOnUser = useRef(false);
     const prevCenterTrigger = useRef(centerOnUserTrigger);
-
+    const prevSelectedCarId = useRef(selectedCarId);
 
     // Compute initial location
     const getInitialLocation = () => {
@@ -59,9 +59,8 @@ const YandexMapContent = ({
     };
 
     const [location, setLocation] = useState(getInitialLocation);
-    const [mapKey, setMapKey] = useState(0);
 
-    // Center on user when location first becomes available
+    // Center on user when location first becomes available (one-time only)
     useEffect(() => {
         if (userLocation && !hasCenteredOnUser.current) {
             hasCenteredOnUser.current = true;
@@ -69,7 +68,6 @@ const YandexMapContent = ({
                 center: [userLocation.longitude, userLocation.latitude],
                 zoom: 15
             });
-            setMapKey(prev => prev + 1);
         }
     }, [userLocation]);
 
@@ -81,21 +79,22 @@ const YandexMapContent = ({
                 center: [userLocation.longitude, userLocation.latitude],
                 zoom: 16
             });
-            setMapKey(prev => prev + 1);
         }
     }, [centerOnUserTrigger, userLocation]);
 
-    // Center on selected car
+    // Center on selected car — only when selectedCarId actually CHANGES
     useEffect(() => {
-        if (selectedCarId) {
+        if (selectedCarId && selectedCarId !== prevSelectedCarId.current) {
+            prevSelectedCarId.current = selectedCarId;
             const car = cars.find(c => c.id === selectedCarId);
             if (car) {
                 setLocation({
                     center: [car.longitude, car.latitude],
                     zoom: 16
                 });
-                setMapKey(prev => prev + 1);
             }
+        } else if (!selectedCarId) {
+            prevSelectedCarId.current = undefined;
         }
     }, [selectedCarId, cars]);
 
@@ -108,16 +107,24 @@ const YandexMapContent = ({
         }
     }, [selectedCarId, onCarSelect, onCarOpen]);
 
+    // Find the best price to show on selected marker
+    const getMarkerPrice = (car: Car) => {
+        const hourlyTariff = car.tariffs.find(t => t.type === 'hourly');
+        const minuteTariff = car.tariffs.find(t => t.type === 'minute');
+        if (minuteTariff) return `${minuteTariff.pricePerUnit} ₽/мин`;
+        if (hourlyTariff) return `${hourlyTariff.pricePerUnit} ₽/час`;
+        return '';
+    };
+
     return (
         <YMap
-            key={mapKey}
             location={reactify.useDefault(location)}
             theme={isDark ? 'dark' : 'light'}
         >
             <YMapDefaultSchemeLayer />
             <YMapDefaultFeaturesLayer />
 
-            {/* User Location Marker */}
+            {/* User Location Marker — updates reactively without map remount */}
             {userLocation && (
                 <YMapMarker coordinates={[userLocation.longitude, userLocation.latitude]}>
                     <div className="relative" style={{ transform: 'translate(-50%, -50%)' }}>
@@ -130,8 +137,7 @@ const YandexMapContent = ({
             {/* Car Markers */}
             {cars.map((car) => {
                 const isSelected = car.id === selectedCarId;
-                const hourlyTariff = car.tariffs.find(t => t.type === 'hourly');
-                const priceText = hourlyTariff ? `${hourlyTariff.pricePerUnit} ₽` : '';
+                const priceText = isSelected ? getMarkerPrice(car) : '';
 
                 return (
                     <YMapMarker
@@ -161,7 +167,7 @@ const YandexMapContent = ({
                                     bg-[var(--tg-theme-bg-color)] px-2 py-1 rounded-lg shadow-lg 
                                     text-xs font-semibold whitespace-nowrap border border-[var(--color-accent)]/30
                                 ">
-                                    <span className="text-[var(--color-accent)]">{priceText}/час</span>
+                                    <span className="text-[var(--color-accent)]">{priceText}</span>
                                 </div>
                             )}
                         </div>

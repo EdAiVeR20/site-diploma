@@ -26,7 +26,7 @@ export type VerificationStatus = 'none' | 'pending' | 'approved' | 'rejected';
 export interface Tariff {
     id: string;
     name: string;
-    type: 'hourly' | 'daily';
+    type: 'minute' | 'hourly' | 'daily';
     pricePerUnit: number;
 }
 

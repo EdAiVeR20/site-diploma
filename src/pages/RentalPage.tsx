@@ -44,7 +44,7 @@ export function RentalPage({ car, onClose, onSuccess }: RentalPageProps) {
         }
 
         const confirmed = await showConfirm(
-            `Арендовать ${car.brand} ${car.model} по тарифу "${selectedTariff.name}" (${selectedTariff.pricePerUnit} ₽/${selectedTariff.type === 'hourly' ? 'час' : 'сутки'})?`
+            `Арендовать ${car.brand} ${car.model} по тарифу "${selectedTariff.name}" (${selectedTariff.pricePerUnit} ₽/${selectedTariff.type === 'hourly' ? 'час' : selectedTariff.type === 'daily' ? 'сутки' : 'мин'})?`
         );
 
         if (!confirmed) return;
@@ -135,8 +135,8 @@ export function RentalPage({ car, onClose, onSuccess }: RentalPageProps) {
                                 <div
                                     key={i}
                                     className={`w-1.5 h-4 rounded-sm ${i < Math.ceil(car.fuelLevel / 25)
-                                            ? car.fuelLevel > 25 ? 'bg-green-500' : 'bg-red-500'
-                                            : 'bg-[var(--color-surface)]'
+                                        ? car.fuelLevel > 25 ? 'bg-green-500' : 'bg-red-500'
+                                        : 'bg-[var(--color-surface)]'
                                         }`}
                                 />
                             ))}
@@ -167,8 +167,8 @@ export function RentalPage({ car, onClose, onSuccess }: RentalPageProps) {
                                 key={tariff.id}
                                 onClick={() => handleTariffSelect(tariff)}
                                 className={`flex-shrink-0 w-32 p-3 rounded-xl border-2 transition-all ${isSelected
-                                        ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10'
-                                        : 'border-transparent bg-[var(--tg-theme-secondary-bg-color)]'
+                                    ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10'
+                                    : 'border-transparent bg-[var(--tg-theme-secondary-bg-color)]'
                                     }`}
                             >
                                 <p className="text-sm font-medium text-[var(--tg-theme-text-color)] mb-1">

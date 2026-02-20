@@ -154,6 +154,7 @@ function AppContent() {
             <HomePage
               onSelectCar={handleSelectCar}
               onOpenDrawer={handleOpenDrawer}
+              isDrawerOpen={isDrawerOpen}
             />
           )}
 

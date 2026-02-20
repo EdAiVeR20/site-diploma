@@ -41,9 +41,12 @@ function getCarClass(_car: Car): string {
     return 'Эконом';
 }
 
-function getHourlyPrice(car: Car): string {
-    const tariff = car.tariffs.find(t => t.type === 'hourly');
-    return tariff ? `${tariff.pricePerUnit}` : '—';
+function getBestPrice(car: Car): { price: string; unit: string } {
+    const minuteTariff = car.tariffs.find(t => t.type === 'minute');
+    if (minuteTariff) return { price: `${minuteTariff.pricePerUnit}`, unit: '₽/мин' };
+    const hourlyTariff = car.tariffs.find(t => t.type === 'hourly');
+    if (hourlyTariff) return { price: `${hourlyTariff.pricePerUnit}`, unit: '₽/час' };
+    return { price: '—', unit: '' };
 }
 
 function CarCarouselInner({
@@ -115,7 +118,7 @@ function CarCarouselInner({
                     const isSelected = car.id === selectedCarId;
                     const fuel = getFuelDisplay(car);
                     const carClass = getCarClass(car);
-                    const price = getHourlyPrice(car);
+                    const { price, unit } = getBestPrice(car);
                     const distance = userLatitude && userLongitude
                         ? calculateDistance(userLatitude, userLongitude, car.latitude, car.longitude)
                         : null;
@@ -191,7 +194,7 @@ function CarCarouselInner({
                                     <p className="text-xs text-[var(--tg-theme-hint-color)] mb-2">Цена</p>
                                     <p className="font-bold text-lg text-[var(--tg-theme-text-color)]">
                                         <span className="text-[var(--color-accent)]">{price}</span>
-                                        <span className="text-xs font-normal text-[var(--tg-theme-hint-color)]"> ₽/час</span>
+                                        <span className="text-xs font-normal text-[var(--tg-theme-hint-color)]"> {unit}</span>
                                     </p>
                                 </div>
                             </div>
