@@ -12,7 +12,7 @@ interface YandexMapProps {
         longitude: number;
     };
     onCarSelect?: (car: Car) => void;
-    onCarDoubleTap?: (car: Car) => void;
+    onCarOpen?: (car: Car) => void;
     selectedCarId?: string;
     centerOnUserTrigger?: number;
     className?: string;

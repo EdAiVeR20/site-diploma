@@ -19,7 +19,7 @@ interface YandexMapProps {
         longitude: number;
     };
     onCarSelect?: (car: Car) => void;
-    onCarDoubleTap?: (car: Car) => void;
+    onCarOpen?: (car: Car) => void;
     selectedCarId?: string;
     centerOnUserTrigger?: number;
     className?: string;
@@ -34,7 +34,7 @@ const YandexMapContent = ({
     cars,
     userLocation,
     onCarSelect,
-    onCarDoubleTap,
+    onCarOpen,
     selectedCarId,
     centerOnUserTrigger,
     isDark
@@ -44,7 +44,7 @@ const YandexMapContent = ({
 
     const hasCenteredOnUser = useRef(false);
     const prevCenterTrigger = useRef(centerOnUserTrigger);
-    const lastMarkerTapRef = useRef<{ id: string; time: number } | null>(null);
+
 
     // Compute initial location
     const getInitialLocation = () => {
@@ -99,19 +99,14 @@ const YandexMapContent = ({
         }
     }, [selectedCarId, cars]);
 
-    // Handle marker tap with double-tap detection
+    // Handle marker tap: re-click on selected → open details
     const handleMarkerTap = useCallback((car: Car) => {
-        const now = Date.now();
-        const lastTap = lastMarkerTapRef.current;
-
-        if (lastTap && lastTap.id === car.id && now - lastTap.time < 400) {
-            onCarDoubleTap?.(car);
-            lastMarkerTapRef.current = null;
+        if (car.id === selectedCarId) {
+            onCarOpen?.(car);
         } else {
             onCarSelect?.(car);
-            lastMarkerTapRef.current = { id: car.id, time: now };
         }
-    }, [onCarSelect, onCarDoubleTap]);
+    }, [selectedCarId, onCarSelect, onCarOpen]);
 
     return (
         <YMap

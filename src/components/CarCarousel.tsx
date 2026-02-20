@@ -5,7 +5,7 @@ interface CarCarouselProps {
     cars: Car[];
     selectedCarId?: string;
     onCarSelect: (car: Car) => void;
-    onCarDoubleTap: (car: Car) => void;
+    onCarOpen: (car: Car) => void;
     userLatitude?: number;
     userLongitude?: number;
 }
@@ -33,7 +33,6 @@ function getFuelDisplay(car: Car) {
 }
 
 function getCarClass(_car: Car): string {
-    // Car type doesn't have carClass field - derive from tariff price
     const tariff = _car.tariffs.find(t => t.type === 'hourly');
     if (!tariff) return 'Стандарт';
     if (tariff.pricePerUnit >= 1000) return 'Премиум';
@@ -51,28 +50,42 @@ function CarCarouselInner({
     cars,
     selectedCarId,
     onCarSelect,
-    onCarDoubleTap,
+    onCarOpen,
     userLatitude,
     userLongitude,
 }: CarCarouselProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
-    const lastTapRef = useRef<{ id: string; time: number } | null>(null);
+    const touchStartRef = useRef<{ y: number; x: number; time: number } | null>(null);
 
-    // Handle single/double tap
+    // Handle tap: if already selected → open, else → select
     const handleTap = useCallback((car: Car) => {
-        const now = Date.now();
-        const lastTap = lastTapRef.current;
-
-        if (lastTap && lastTap.id === car.id && now - lastTap.time < 400) {
-            // Double tap — open rental
-            onCarDoubleTap(car);
-            lastTapRef.current = null;
+        if (car.id === selectedCarId) {
+            onCarOpen(car);
         } else {
-            // Single tap — select
             onCarSelect(car);
-            lastTapRef.current = { id: car.id, time: now };
         }
-    }, [onCarSelect, onCarDoubleTap]);
+    }, [selectedCarId, onCarSelect, onCarOpen]);
+
+    // Swipe-up tracking
+    const handleTouchStart = useCallback((e: React.TouchEvent) => {
+        const touch = e.touches[0];
+        touchStartRef.current = { y: touch.clientY, x: touch.clientX, time: Date.now() };
+    }, []);
+
+    const handleTouchEnd = useCallback((car: Car, e: React.TouchEvent) => {
+        if (!touchStartRef.current) return;
+        const touch = e.changedTouches[0];
+        const deltaY = touchStartRef.current.y - touch.clientY;
+        const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+        const duration = Date.now() - touchStartRef.current.time;
+        touchStartRef.current = null;
+
+        // Swipe up: vertical > 50px, more vertical than horizontal, quick gesture
+        if (deltaY > 50 && deltaY > deltaX && duration < 500) {
+            e.preventDefault();
+            onCarOpen(car);
+        }
+    }, [onCarOpen]);
 
     // Scroll to selected card
     useEffect(() => {
@@ -111,11 +124,20 @@ function CarCarouselInner({
                         <div
                             key={car.id}
                             onClick={() => handleTap(car)}
+                            onTouchStart={handleTouchStart}
+                            onTouchEnd={(e) => handleTouchEnd(car, e)}
                             className={`flex-shrink-0 w-[280px] bg-[var(--tg-theme-bg-color)] rounded-2xl shadow-xl overflow-hidden snap-center cursor-pointer transition-all duration-200 border-2 ${isSelected
                                 ? 'border-[var(--color-accent)] scale-[1.02]'
                                 : 'border-transparent'
                                 }`}
                         >
+                            {/* Swipe hint for selected card */}
+                            {isSelected && (
+                                <div className="flex justify-center pt-2 pb-0">
+                                    <div className="w-10 h-1 bg-[var(--tg-theme-hint-color)]/40 rounded-full" />
+                                </div>
+                            )}
+
                             {/* Top section: Type badge + Name + Class */}
                             <div className="p-5 pb-3">
                                 <div className="flex items-center gap-2 mb-2">

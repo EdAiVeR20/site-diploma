@@ -1,4 +1,3 @@
-export { BottomNav } from './BottomNav';
 export { CarCard } from './CarCard';
 export { Loader } from './Loader';
 export { Button } from './Button';
@@ -7,3 +6,4 @@ export { GeolocationWarning } from './GeolocationWarning';
 export { LocationButton } from './LocationButton';
 export { SideDrawer } from './SideDrawer';
 export { CarCarousel } from './CarCarousel';
+

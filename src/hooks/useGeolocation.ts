@@ -43,7 +43,7 @@ export function useGeolocation() {
                 }
                 dispatch(setGeolocationError(errorMessage));
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
         );
 
         return () => {
