@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback, memo, useMemo } from 'react';
-import { YandexMap, GeolocationWarning, LocationButton, CarCarousel, Button } from '../components';
+import { YandexMap, GeolocationWarning, LocationButton, CarCarousel } from '../components';
 import { useAppDispatch, useAppSelector } from '../store';
 import { fetchAvailableCars } from '../store/slices/carsSlice';
 import type { Car } from '../types';
@@ -17,15 +17,6 @@ function getRetryDelay(retryCount: number): number {
     return 30000;
 }
 
-function getCarClass(car: Car): string {
-    const tariff = car.tariffs.find(t => t.type === 'hourly');
-    if (!tariff) return 'Стандарт';
-    if (tariff.pricePerUnit >= 1000) return 'Премиум';
-    if (tariff.pricePerUnit >= 600) return 'Бизнес';
-    if (tariff.pricePerUnit >= 400) return 'Comfort';
-    return 'Эконом';
-}
-
 export const HomePage = memo(function HomePage({ onSelectCar, onOpenDrawer, isDrawerOpen }: HomePageProps) {
     const dispatch = useAppDispatch();
     const { cars, isLoading: carsLoading, error: carsError, hasInitiallyLoaded, retryCount } = useAppSelector((state) => state.cars);
@@ -37,7 +28,6 @@ export const HomePage = memo(function HomePage({ onSelectCar, onOpenDrawer, isDr
     const [selectedCarId, setSelectedCarId] = useState<string | undefined>();
     const [centerOnUserTrigger, setCenterOnUserTrigger] = useState(0);
     const [errorDismissed, setErrorDismissed] = useState(false);
-    const [expandedCar, setExpandedCar] = useState<Car | null>(null);
 
     // Refs for dedup
     const hasFetchedCars = useRef(false);
@@ -86,23 +76,11 @@ export const HomePage = memo(function HomePage({ onSelectCar, onOpenDrawer, isDr
     // Handlers
     const handleCarSelect = useCallback((car: Car) => {
         setSelectedCarId(car.id);
-        setExpandedCar(null);
     }, []);
 
     const handleCarOpen = useCallback((car: Car) => {
-        setExpandedCar(car);
-    }, []);
-
-    const handleCloseExpanded = useCallback(() => {
-        setExpandedCar(null);
-    }, []);
-
-    const handleRentCar = useCallback(() => {
-        if (expandedCar) {
-            onSelectCar(expandedCar);
-            setExpandedCar(null);
-        }
-    }, [expandedCar, onSelectCar]);
+        onSelectCar(car);
+    }, [onSelectCar]);
 
     const handleCenterOnUser = useCallback(() => {
         setCenterOnUserTrigger(prev => prev + 1);
@@ -116,6 +94,10 @@ export const HomePage = memo(function HomePage({ onSelectCar, onOpenDrawer, isDr
     const handleDismissError = useCallback(() => {
         setErrorDismissed(true);
     }, []);
+
+    const handleToggleDrawer = useCallback(() => {
+        onOpenDrawer();
+    }, [onOpenDrawer]);
 
     const showGeoWarning = !geoLoading && geoError && !geoWarningDismissed;
     const showErrorBanner = carsError && hasInitiallyLoaded && !errorDismissed && cars.length === 0;
@@ -137,10 +119,10 @@ export const HomePage = memo(function HomePage({ onSelectCar, onOpenDrawer, isDr
                 </div>
             )}
 
-            {/* Animated Hamburger menu button */}
+            {/* Animated Hamburger menu button — z-[60] stays above SideDrawer (z-50) */}
             <button
-                onClick={onOpenDrawer}
-                className="group absolute top-4 left-4 z-30 w-12 h-12 rounded-full bg-[var(--tg-theme-bg-color)] shadow-lg flex items-center justify-center border border-[var(--tg-theme-hint-color)]/20"
+                onClick={handleToggleDrawer}
+                className="group absolute top-4 left-4 z-[60] w-12 h-12 rounded-full bg-[var(--tg-theme-bg-color)] shadow-lg flex items-center justify-center border border-[var(--tg-theme-hint-color)]/20 transition-shadow duration-300"
                 aria-label="Открыть меню"
                 aria-pressed={isDrawerOpen ? 'true' : 'false'}
             >
@@ -227,7 +209,7 @@ export const HomePage = memo(function HomePage({ onSelectCar, onOpenDrawer, isDr
             )}
 
             {/* Car Carousel at bottom */}
-            {cars.length > 0 && !expandedCar && (
+            {cars.length > 0 && (
                 <CarCarousel
                     cars={cars}
                     selectedCarId={selectedCarId}
@@ -235,97 +217,6 @@ export const HomePage = memo(function HomePage({ onSelectCar, onOpenDrawer, isDr
                     onCarOpen={handleCarOpen}
                     userLatitude={latitude ?? undefined}
                     userLongitude={longitude ?? undefined}
-                />
-            )}
-
-            {/* Bottom Sheet — expanded car details */}
-            <div
-                className={`absolute bottom-0 left-0 right-0 z-40 transition-transform duration-300 ease-out ${expandedCar ? 'translate-y-0' : 'translate-y-full'
-                    }`}
-            >
-                {expandedCar && (
-                    <div className="bg-[var(--tg-theme-bg-color)] rounded-t-3xl shadow-2xl border-t border-[var(--tg-theme-hint-color)]/10">
-                        {/* Drag handle */}
-                        <div className="flex justify-center pt-3 pb-2">
-                            <div className="w-10 h-1 bg-[var(--tg-theme-hint-color)]/40 rounded-full" />
-                        </div>
-
-                        {/* Car info */}
-                        <div className="px-5 pb-5">
-                            {/* Header: name + plate */}
-                            <div className="flex items-center justify-between mb-3">
-                                <div>
-                                    <h2 className="text-xl font-bold text-[var(--tg-theme-text-color)]">
-                                        {expandedCar.brand} {expandedCar.model}
-                                    </h2>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-sm text-[var(--tg-theme-hint-color)]">
-                                            {getCarClass(expandedCar)}
-                                        </span>
-                                        <span className="text-[var(--tg-theme-hint-color)]">•</span>
-                                        <span className="px-2 py-0.5 bg-[var(--tg-theme-secondary-bg-color)] rounded text-xs text-[var(--tg-theme-hint-color)] font-mono">
-                                            {expandedCar.licensePlate}
-                                        </span>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={handleCloseExpanded}
-                                    className="w-8 h-8 rounded-full bg-[var(--tg-theme-secondary-bg-color)] flex items-center justify-center"
-                                >
-                                    <svg className="w-4 h-4 text-[var(--tg-theme-hint-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-
-                            {/* Stats row */}
-                            <div className="flex gap-3 mb-4">
-                                {/* Fuel */}
-                                <div className="flex-1 bg-[var(--tg-theme-secondary-bg-color)] rounded-xl p-3">
-                                    <p className="text-xs text-[var(--tg-theme-hint-color)] mb-1.5">Топливо</p>
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex gap-0.5">
-                                            {[...Array(4)].map((_, i) => (
-                                                <div
-                                                    key={i}
-                                                    className={`w-1.5 h-4 rounded-sm ${i < Math.ceil(expandedCar.fuelLevel / 25)
-                                                        ? expandedCar.fuelLevel > 50 ? 'bg-green-500' : expandedCar.fuelLevel > 25 ? 'bg-yellow-500' : 'bg-red-500'
-                                                        : 'bg-[var(--tg-theme-hint-color)]/30'
-                                                        }`}
-                                                />
-                                            ))}
-                                        </div>
-                                        <span className="font-bold text-[var(--tg-theme-text-color)]">{expandedCar.fuelLevel}%</span>
-                                    </div>
-                                </div>
-
-                                {/* Tariffs preview */}
-                                {expandedCar.tariffs.slice(0, 2).map((tariff) => (
-                                    <div key={tariff.id} className="flex-1 bg-[var(--tg-theme-secondary-bg-color)] rounded-xl p-3">
-                                        <p className="text-xs text-[var(--tg-theme-hint-color)] mb-1.5">
-                                            {tariff.type === 'minute' ? 'В минуту' : tariff.type === 'hourly' ? 'В час' : 'В сутки'}
-                                        </p>
-                                        <p className="font-bold text-[var(--color-accent)]">
-                                            {tariff.pricePerUnit} <span className="text-xs font-normal text-[var(--tg-theme-hint-color)]">₽/{tariff.type === 'minute' ? 'мин' : tariff.type === 'hourly' ? 'час' : 'сут'}</span>
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Action button */}
-                            <Button fullWidth size="lg" onClick={handleRentCar}>
-                                Подробнее
-                            </Button>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Backdrop for expanded sheet */}
-            {expandedCar && (
-                <div
-                    className="absolute inset-0 bg-black/30 z-[35] transition-opacity duration-300"
-                    onClick={handleCloseExpanded}
                 />
             )}
         </div>

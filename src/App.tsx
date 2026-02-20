@@ -114,7 +114,7 @@ function AppContent() {
   }, [navigate]);
 
   const handleOpenDrawer = useCallback(() => {
-    setIsDrawerOpen(true);
+    setIsDrawerOpen(prev => !prev);
   }, []);
 
   const handleCloseDrawer = useCallback(() => {
