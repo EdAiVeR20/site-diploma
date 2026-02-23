@@ -23,11 +23,14 @@ export default defineConfig(({ mode }) => {
             // Separate vendor chunks for better caching
             vendor: ['react', 'react-dom', 'react-router-dom'],
             redux: ['@reduxjs/toolkit', 'react-redux'],
+            ui: ['@lobehub/ui'],
+            form: ['react-hook-form', '@hookform/resolvers', 'zod'],
+            query: ['@tanstack/react-query'],
           },
         },
       },
       // Set chunk size warning limit
-      chunkSizeWarningLimit: 500,
+      chunkSizeWarningLimit: 1000,
     },
     // Remove console.log in production
     esbuild: {
