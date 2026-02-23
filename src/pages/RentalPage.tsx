@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { Button } from '../components';
 import { useTelegram } from '../hooks/useTelegram';
 import { useAppDispatch, useAppSelector } from '../store';
-import { createRental, selectTariff, clearSelectedTariff } from '../store/slices/rentalsSlice';
+import { selectTariff, clearSelectedTariff } from '../store/slices/rentalsSlice';
+import { useCreateRental } from '../hooks/queries/useRentals';
 import type { Car, Tariff } from '../types';
 
 interface RentalPageProps {
@@ -14,7 +15,8 @@ interface RentalPageProps {
 export function RentalPage({ car, onClose, onSuccess }: RentalPageProps) {
     const dispatch = useAppDispatch();
     const { showBackButton, hideBackButton, hapticFeedback, showAlert, showConfirm } = useTelegram();
-    const { selectedTariff, isCreating } = useAppSelector((state) => state.rentals);
+    const { selectedTariff } = useAppSelector((state) => state.rentals);
+    const { mutateAsync: createRentalMutate, isPending: isCreating } = useCreateRental();
 
     // Initialize selected tariff
     useEffect(() => {
@@ -51,10 +53,10 @@ export function RentalPage({ car, onClose, onSuccess }: RentalPageProps) {
 
         try {
             hapticFeedback('medium');
-            await dispatch(createRental({
+            await createRentalMutate({
                 carId: car.id,
                 tariffId: selectedTariff.id,
-            })).unwrap();
+            });
 
             hapticFeedback('success');
             await showAlert('Аренда успешно оформлена!');
