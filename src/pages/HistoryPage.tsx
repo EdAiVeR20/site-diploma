@@ -1,16 +1,9 @@
-import { useEffect } from 'react';
 import { Loader } from '../components';
-import { useAppDispatch, useAppSelector } from '../store';
-import { fetchRentalHistory } from '../store/slices/rentalsSlice';
+import { useRentalHistory } from '../hooks/queries/useRentals';
 import type { Rental } from '../types';
 
 export function HistoryPage() {
-    const dispatch = useAppDispatch();
-    const { history: rentals, isLoading } = useAppSelector((state) => state.rentals);
-
-    useEffect(() => {
-        dispatch(fetchRentalHistory());
-    }, [dispatch]);
+    const { data: rentals = [], isLoading } = useRentalHistory();
 
     const formatDate = (dateString: string): string => {
         const date = new Date(dateString);
@@ -46,16 +39,16 @@ export function HistoryPage() {
     return (
         <div className="flex flex-col min-h-full pt-4 pb-6">
             {rentals.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
-                    <div className="w-16 h-16 rounded-full bg-[var(--color-surface)] flex items-center justify-center mb-4">
-                        <svg className="w-8 h-8 text-[var(--tg-theme-hint-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="flex-1 flex flex-col items-center justify-center text-center px-4 animate-fade-in">
+                    <div className="w-20 h-20 rounded-full bg-[var(--color-surface)] flex items-center justify-center mb-5 animate-pulse-slow">
+                        <svg className="w-10 h-10 text-[var(--tg-theme-hint-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
                     <h2 className="text-lg font-semibold text-[var(--tg-theme-text-color)] mb-2">
                         Пока нет поездок
                     </h2>
-                    <p className="text-sm text-[var(--tg-theme-hint-color)]">
+                    <p className="text-sm text-[var(--tg-theme-hint-color)] max-w-[240px]">
                         Ваши поездки появятся здесь после первой аренды
                     </p>
                 </div>
@@ -66,7 +59,8 @@ export function HistoryPage() {
                         return (
                             <div
                                 key={rental.id}
-                                className={`px-4 py-4 ${index !== rentals.length - 1 ? 'border-b border-[var(--color-accent)]/10' : ''}`}
+                                className="mx-4 mb-3 card p-4 animate-slide-up"
+                                style={{ animationDelay: `${index * 0.05}s` }}
                             >
                                 {/* Header: Car name + Status */}
                                 <div className="flex items-start justify-between mb-2">

@@ -13,6 +13,8 @@ const apiClient: AxiosInstance = axios.create({
     },
 });
 
+import { APP_CONFIG } from '../config';
+
 // Request interceptor to add Telegram Init Data
 apiClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
@@ -28,6 +30,10 @@ apiClient.interceptors.request.use(
             config.headers.Authorization = `Bearer ${token}`;
         }
 
+        if (APP_CONFIG.DEV_MODE) {
+            console.log(`[API REQUEST] ${config.method?.toUpperCase()} ${config.url}`, config.params || config.data || '');
+        }
+
         return config;
     },
     (error) => Promise.reject(error)
@@ -40,6 +46,13 @@ apiClient.interceptors.response.use(
         if (error.response?.status === 401) {
             // Clear token and redirect to auth
             localStorage.removeItem('accessToken');
+            if (APP_CONFIG.DEV_MODE) {
+                console.error('[API ERROR 401] Unauthorized. Token cleared.');
+            }
+        }
+
+        if (APP_CONFIG.DEV_MODE) {
+            console.error(`[API ERROR] ${error.response?.status || 'Network'} at ${error.config?.url}:`, error.response?.data || error.message);
         }
         return Promise.reject(error);
     }

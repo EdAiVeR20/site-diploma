@@ -5,7 +5,8 @@ interface CarCarouselProps {
     cars: Car[];
     selectedCarId?: string;
     onCarSelect: (car: Car) => void;
-    onCarOpen: (car: Car) => void;
+    /** Called when user swipes up on the selected card */
+    onDragExpand: (car: Car, cardRect: DOMRect, touchY: number) => void;
     userLatitude?: number;
     userLongitude?: number;
 }
@@ -53,33 +54,74 @@ function CarCarouselInner({
     cars,
     selectedCarId,
     onCarSelect,
-    onCarOpen,
+    onDragExpand,
     userLatitude,
     userLongitude,
 }: CarCarouselProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
+    const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-    // Handle tap: if already selected → open, else → select
+    // Vertical drag detection
+    const touchStartRef = useRef<{ x: number; y: number; car: Car } | null>(null);
+    const hasDragTriggered = useRef(false);
+
+    const setCardRef = useCallback((el: HTMLDivElement | null, carId: string) => {
+        if (el) cardRefs.current.set(carId, el);
+        else cardRefs.current.delete(carId);
+    }, []);
+
+    // Tap → select only (no click-to-open)
     const handleTap = useCallback((car: Car) => {
-        if (car.id === selectedCarId) {
-            onCarOpen(car);
-        } else {
+        if (hasDragTriggered.current) return;
+        if (car.id !== selectedCarId) {
             onCarSelect(car);
         }
-    }, [selectedCarId, onCarSelect, onCarOpen]);
+        // Tapping an already-selected card does nothing — swipe up to expand
+    }, [selectedCarId, onCarSelect]);
 
-    // Scroll to selected card
+    // Touch: detect vertical upward drag on selected card
+    const handleCardTouchStart = useCallback((e: React.TouchEvent, car: Car) => {
+        if (car.id !== selectedCarId) return;
+        const touch = e.touches[0];
+        touchStartRef.current = { x: touch.clientX, y: touch.clientY, car };
+        hasDragTriggered.current = false;
+    }, [selectedCarId]);
+
+    const handleCardTouchMove = useCallback((e: React.TouchEvent) => {
+        if (!touchStartRef.current || hasDragTriggered.current) return;
+        const touch = e.touches[0];
+        const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+        const deltaY = touchStartRef.current.y - touch.clientY; // positive = upward
+
+        // Vertical upward > 8px and clearly vertical (not horizontal scroll)
+        if (deltaY > 8 && deltaY > deltaX * 1.2) {
+            hasDragTriggered.current = true;
+            const car = touchStartRef.current.car;
+            const cardEl = cardRefs.current.get(car.id);
+            const rect = cardEl?.getBoundingClientRect();
+            if (rect) {
+                e.preventDefault();
+                onDragExpand(car, rect, touchStartRef.current.y);
+            }
+            touchStartRef.current = null;
+        }
+    }, [onDragExpand]);
+
+    const handleCardTouchEnd = useCallback(() => {
+        touchStartRef.current = null;
+        setTimeout(() => { hasDragTriggered.current = false; }, 50);
+    }, []);
+
+    // Auto-scroll to selected card
     useEffect(() => {
         if (!selectedCarId || !scrollRef.current) return;
         const idx = cars.findIndex(c => c.id === selectedCarId);
         if (idx === -1) return;
-
         const container = scrollRef.current;
         const cardWidth = 280;
         const gap = 16;
         const containerWidth = container.clientWidth;
         const scrollTarget = idx * (cardWidth + gap) - (containerWidth / 2 - cardWidth / 2);
-
         container.scrollTo({ left: scrollTarget, behavior: 'smooth' });
     }, [selectedCarId, cars]);
 
@@ -104,81 +146,78 @@ function CarCarouselInner({
                     return (
                         <div
                             key={car.id}
+                            ref={(el) => setCardRef(el, car.id)}
                             onClick={() => handleTap(car)}
+                            onTouchStart={(e) => handleCardTouchStart(e, car)}
+                            onTouchMove={handleCardTouchMove}
+                            onTouchEnd={handleCardTouchEnd}
                             className={`flex-shrink-0 w-[280px] bg-[var(--tg-theme-bg-color)] rounded-2xl shadow-xl overflow-hidden snap-center cursor-pointer transition-all duration-200 border-2 ${isSelected
                                 ? 'border-[var(--color-accent)] scale-[1.02]'
                                 : 'border-transparent'
                                 }`}
                         >
-
-                            {/* Top section: Type badge + Name + Class */}
-                            <div className="p-5 pb-3">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--color-accent)]">
-                                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                        </svg>
-                                        Бензин
-                                    </span>
+                            <div className="px-5 pt-4 pb-3">
+                                <div className="flex items-center gap-1.5 mb-2">
+                                    <svg className="w-3.5 h-3.5 text-[var(--color-accent)]" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                    <span className="text-xs font-medium text-[var(--color-accent)]">Бензин</span>
                                 </div>
 
-                                <div className="flex items-center justify-between mb-1">
-                                    <h3 className="font-bold text-xl text-[var(--tg-theme-text-color)]">
+                                <div className="flex items-center justify-between gap-3 mb-1">
+                                    <h3 className="font-bold text-xl leading-tight text-[var(--tg-theme-text-color)] truncate min-w-0">
                                         {car.brand} {car.model}
                                     </h3>
-                                    <span className="px-2.5 py-1 bg-[var(--tg-theme-secondary-bg-color)] rounded-lg text-xs text-[var(--tg-theme-text-color)] font-mono border border-[var(--tg-theme-hint-color)]/15">
+                                    <span className="flex-shrink-0 px-2 py-0.5 bg-[var(--tg-theme-secondary-bg-color)] rounded-md text-[11px] text-[var(--tg-theme-text-color)] font-mono border border-[var(--tg-theme-hint-color)]/20">
                                         {car.licensePlate}
                                     </span>
                                 </div>
 
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm text-[var(--tg-theme-hint-color)]">{carClass}</span>
+                                <div className="flex items-center gap-1.5 text-sm text-[var(--tg-theme-hint-color)] mb-3">
+                                    <span>{carClass}</span>
                                     {distance && (
                                         <>
-                                            <span className="text-[var(--tg-theme-hint-color)]">•</span>
-                                            <span className="text-sm text-[var(--tg-theme-hint-color)]">{distance}</span>
+                                            <span>•</span>
+                                            <span>{distance}</span>
                                         </>
                                     )}
                                 </div>
-                            </div>
 
-                            {/* Stats: Battery/Fuel + Price */}
-                            <div className="flex px-5 pb-4 gap-3">
-                                <div className="flex-1 bg-[var(--tg-theme-secondary-bg-color)] rounded-2xl p-4">
-                                    <p className="text-xs text-[var(--tg-theme-hint-color)] mb-2">{fuel.label}</p>
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex gap-0.5">
-                                            {[...Array(4)].map((_, i) => (
-                                                <div
-                                                    key={i}
-                                                    className={`w-2 h-5 rounded-sm ${i < Math.ceil(fuel.value / 25) ? fuel.color : 'bg-[var(--tg-theme-hint-color)]/30'
-                                                        }`}
-                                                />
-                                            ))}
+                                <div className="flex gap-3">
+                                    <div className="flex-1 bg-[var(--tg-theme-secondary-bg-color)] rounded-xl p-3.5">
+                                        <p className="text-xs text-[var(--tg-theme-hint-color)] mb-2">{fuel.label}</p>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex gap-[3px]">
+                                                {[...Array(4)].map((_, i) => (
+                                                    <div
+                                                        key={i}
+                                                        className={`w-[5px] h-[18px] rounded-sm ${i < Math.ceil(fuel.value / 25) ? fuel.color : 'bg-[var(--tg-theme-hint-color)]/25'}`}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <span className="font-bold text-lg text-[var(--tg-theme-text-color)]">{fuel.value}%</span>
                                         </div>
-                                        <span className="font-bold text-lg text-[var(--tg-theme-text-color)]">{fuel.value}%</span>
+                                    </div>
+
+                                    <div className="flex-1 bg-[var(--tg-theme-secondary-bg-color)] rounded-xl p-3.5">
+                                        <p className="text-xs text-[var(--tg-theme-hint-color)] mb-2">Цена</p>
+                                        <p className="font-bold text-lg text-[var(--tg-theme-text-color)]">
+                                            <span className="text-[var(--color-accent)]">{price}</span>
+                                            <span className="text-xs font-normal text-[var(--tg-theme-hint-color)]"> {unit}</span>
+                                        </p>
                                     </div>
                                 </div>
-
-                                <div className="flex-1 bg-[var(--tg-theme-secondary-bg-color)] rounded-2xl p-4">
-                                    <p className="text-xs text-[var(--tg-theme-hint-color)] mb-2">Цена</p>
-                                    <p className="font-bold text-lg text-[var(--tg-theme-text-color)]">
-                                        <span className="text-[var(--color-accent)]">{price}</span>
-                                        <span className="text-xs font-normal text-[var(--tg-theme-hint-color)]"> {unit}</span>
-                                    </p>
-                                </div>
                             </div>
 
-                            {/* Car image */}
-                            <div className="h-36 bg-gradient-to-t from-[var(--tg-theme-secondary-bg-color)] to-transparent flex items-center justify-center px-4">
+                            <div className="h-32 bg-gradient-to-t from-[var(--tg-theme-secondary-bg-color)]/50 to-transparent flex items-center justify-center px-8">
                                 {car.imageUrl ? (
                                     <img
                                         src={car.imageUrl}
                                         alt={`${car.brand} ${car.model}`}
-                                        className="h-full w-full object-contain"
+                                        className="h-full w-full object-contain drop-shadow-lg"
                                     />
                                 ) : (
-                                    <svg className="w-24 h-24 text-[var(--tg-theme-hint-color)]/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                                    <svg className="w-20 h-20 text-[var(--tg-theme-hint-color)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.8}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 17h8M8 17v-4m8 4v-4m-8 0h8m-8 0l-2-4h12l-2 4M6 13V9a2 2 0 012-2h8a2 2 0 012 2v4" />
                                     </svg>
                                 )}

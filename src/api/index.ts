@@ -35,8 +35,10 @@ export const carsApi = {
     /**
      * Получить список доступных машин
      */
-    getAvailable: async (_lat?: number, _lon?: number, _radius?: number): Promise<CarsResponse> => {
-        const { data } = await apiClient.get<CarsResponse>('/cars/available');
+    getAvailable: async (lat?: number, lon?: number, radius?: number): Promise<CarsResponse> => {
+        const { data } = await apiClient.get<CarsResponse>('/cars/available', {
+            params: { lat, lon, radius },
+        });
         return data;
     },
 

@@ -1,8 +1,7 @@
-import { useEffect } from 'react';
 import { Button, Loader } from '../components';
 import { useTelegram } from '../hooks/useTelegram';
-import { useAppDispatch, useAppSelector } from '../store';
-import { fetchProfile } from '../store/slices/profileSlice';
+import { useAppSelector } from '../store';
+import { useProfile } from '../hooks/queries/useProfile';
 import type { VerificationStatus } from '../types';
 
 interface ProfilePageProps {
@@ -10,21 +9,17 @@ interface ProfilePageProps {
 }
 
 export function ProfilePage({ onNavigateToVerification }: ProfilePageProps) {
-    const dispatch = useAppDispatch();
     const { user: tgUser, showAlert, hapticFeedback } = useTelegram();
     const { telegramUser } = useAppSelector((state) => state.auth);
-    const { user: profile, isLoading } = useAppSelector((state) => state.profile);
 
-    useEffect(() => {
-        dispatch(fetchProfile({
-            telegramUser: tgUser ? {
-                id: tgUser.id,
-                firstName: tgUser.firstName,
-                lastName: tgUser.lastName,
-                username: tgUser.username,
-            } : undefined
-        }));
-    }, [dispatch, tgUser]);
+    const tgUserData = tgUser ? {
+        id: tgUser.id,
+        firstName: tgUser.firstName,
+        lastName: tgUser.lastName,
+        username: tgUser.username,
+    } : undefined;
+
+    const { data: profile, isLoading } = useProfile({ telegramUser: tgUserData });
 
     const getVerificationStatusText = (status: VerificationStatus): { text: string; badgeClass: string } => {
         switch (status) {
@@ -54,7 +49,7 @@ export function ProfilePage({ onNavigateToVerification }: ProfilePageProps) {
     return (
         <div className="flex flex-col min-h-full px-4 pt-4 pb-6">
             {/* Avatar and Name */}
-            <div className="flex flex-col items-center mb-6 animate-slide-up">
+            <div className="flex flex-col items-center mb-6 animate-scale-in">
                 <div className="avatar-ring mb-3">
                     <div className="avatar-inner">
                         {tgUser?.photoUrl ? (
@@ -83,7 +78,7 @@ export function ProfilePage({ onNavigateToVerification }: ProfilePageProps) {
             {/* Balance Card */}
             <div className="balance-card mb-4 text-white animate-slide-up" style={{ animationDelay: '0.1s' }}>
                 <p className="text-sm opacity-80 mb-1">Баланс</p>
-                <p className="text-3xl font-bold">
+                <p className="text-3xl font-bold tracking-tight">
                     {profile?.balance?.toLocaleString('ru-RU') ?? 0} ₽
                 </p>
             </div>

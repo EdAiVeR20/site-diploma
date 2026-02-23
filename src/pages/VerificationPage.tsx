@@ -1,8 +1,22 @@
-import { useEffect, useRef, type ChangeEvent, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type RefObject } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '../components';
 import { useTelegram } from '../hooks/useTelegram';
-import { useAppDispatch, useAppSelector } from '../store';
-import { setVerificationFile, clearVerificationFiles, submitVerification } from '../store/slices/profileSlice';
+import { useSubmitVerification } from '../hooks/queries/useProfile';
+
+const fileSchema = z.custom<File>((val) => val instanceof File, 'Пожалуйста, загрузите файл')
+    .refine((file) => file.size <= 10 * 1024 * 1024, 'Размер файла не должен превышать 10 МБ')
+    .refine((file) => file.type.startsWith('image/'), 'Пожалуйста, загрузите изображение');
+
+const verificationSchema = z.object({
+    passport: fileSchema,
+    license: fileSchema,
+    selfie: fileSchema,
+});
+
+type VerificationFormData = z.infer<typeof verificationSchema>;
 
 interface VerificationPageProps {
     onClose: () => void;
@@ -17,10 +31,11 @@ interface UploadCardProps {
     type: FileType;
     inputRef: RefObject<HTMLInputElement | null>;
     preview: string | null;
+    error?: string;
     onFileChange: (type: FileType) => (e: ChangeEvent<HTMLInputElement>) => void;
 }
 
-function UploadCard({ title, description, type, inputRef, preview, onFileChange }: UploadCardProps) {
+function UploadCard({ title, description, type, inputRef, preview, error, onFileChange }: UploadCardProps) {
     return (
         <div
             onClick={() => inputRef.current?.click()}
@@ -72,71 +87,74 @@ function UploadCard({ title, description, type, inputRef, preview, onFileChange 
                     </svg>
                 </div>
             )}
+
+            {error && (
+                <div className="mt-3 text-sm text-red-500 flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    {error}
+                </div>
+            )}
         </div>
     );
 }
 
 export function VerificationPage({ onClose, onSuccess }: VerificationPageProps) {
-    const dispatch = useAppDispatch();
     const { showBackButton, hideBackButton, hapticFeedback, showAlert } = useTelegram();
-    const { verificationFiles, verificationPreviews, isSubmittingVerification } = useAppSelector(
-        (state) => state.profile
-    );
+    const { mutateAsync: submitVerification, isPending: isSubmittingVerification } = useSubmitVerification();
+
+    const { register, handleSubmit, setValue, formState: { errors, isValid } } = useForm<VerificationFormData>({
+        resolver: zodResolver(verificationSchema),
+        mode: 'onChange'
+    });
+
+    const [verificationPreviews, setVerificationPreviews] = useState<{ passport: string | null; license: string | null; selfie: string | null }>({
+        passport: null,
+        license: null,
+        selfie: null,
+    });
 
     const passportRef = useRef<HTMLInputElement>(null);
     const licenseRef = useRef<HTMLInputElement>(null);
     const selfieRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        register('passport');
+        register('license');
+        register('selfie');
+    }, [register]);
 
     // Show back button
     useEffect(() => {
         showBackButton(onClose);
         return () => {
             hideBackButton();
-            dispatch(clearVerificationFiles());
         };
-    }, [onClose, showBackButton, hideBackButton, dispatch]);
+    }, [onClose, showBackButton, hideBackButton]);
 
     const handleFileChange = (type: FileType) => (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-            showAlert('Пожалуйста, загрузите изображение');
-            return;
+        setValue(type, file, { shouldValidate: true });
+
+        if (file.type.startsWith('image/')) {
+            hapticFeedback('light');
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setVerificationPreviews(
+                    (prev: { passport: string | null; license: string | null; selfie: string | null }) => ({ ...prev, [type]: reader.result as string })
+                );
+            };
+            reader.readAsDataURL(file);
         }
-
-        // Validate file size (max 10MB)
-        if (file.size > 10 * 1024 * 1024) {
-            showAlert('Размер файла не должен превышать 10 МБ');
-            return;
-        }
-
-        hapticFeedback('light');
-
-        // Create preview
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            dispatch(setVerificationFile({
-                type,
-                file,
-                preview: reader.result as string,
-            }));
-        };
-        reader.readAsDataURL(file);
     };
 
-    const handleSubmit = async () => {
-        const { passport, license, selfie } = verificationFiles;
-
-        if (!passport || !license || !selfie) {
-            await showAlert('Пожалуйста, загрузите все необходимые документы');
-            return;
-        }
-
+    const onSubmit = async (data: VerificationFormData) => {
         try {
             hapticFeedback('medium');
-            await dispatch(submitVerification({ passport, license, selfie })).unwrap();
+            await submitVerification(data);
             hapticFeedback('success');
             await showAlert('Документы успешно отправлены на проверку!');
             onSuccess();
@@ -146,8 +164,6 @@ export function VerificationPage({ onClose, onSuccess }: VerificationPageProps) 
             console.error(err);
         }
     };
-
-    const isComplete = verificationFiles.passport && verificationFiles.license && verificationFiles.selfie;
 
     return (
         <div className="flex flex-col min-h-full px-4 pt-6 pb-24">
@@ -181,6 +197,7 @@ export function VerificationPage({ onClose, onSuccess }: VerificationPageProps) 
                     type="passport"
                     inputRef={passportRef}
                     preview={verificationPreviews.passport}
+                    error={errors.passport?.message}
                     onFileChange={handleFileChange}
                 />
                 <UploadCard
@@ -189,6 +206,7 @@ export function VerificationPage({ onClose, onSuccess }: VerificationPageProps) 
                     type="license"
                     inputRef={licenseRef}
                     preview={verificationPreviews.license}
+                    error={errors.license?.message}
                     onFileChange={handleFileChange}
                 />
                 <UploadCard
@@ -197,6 +215,7 @@ export function VerificationPage({ onClose, onSuccess }: VerificationPageProps) 
                     type="selfie"
                     inputRef={selfieRef}
                     preview={verificationPreviews.selfie}
+                    error={errors.selfie?.message}
                     onFileChange={handleFileChange}
                 />
             </div>
@@ -212,9 +231,9 @@ export function VerificationPage({ onClose, onSuccess }: VerificationPageProps) 
                 <Button
                     fullWidth
                     size="lg"
-                    onClick={handleSubmit}
+                    onClick={handleSubmit(onSubmit)}
                     loading={isSubmittingVerification}
-                    disabled={!isComplete}
+                    disabled={!isValid}
                 >
                     Отправить на проверку
                 </Button>

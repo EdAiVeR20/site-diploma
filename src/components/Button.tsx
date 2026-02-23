@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+import { Button as LobeButton } from '@lobehub/ui';
 
 interface ButtonProps {
     children: ReactNode;
@@ -21,36 +22,43 @@ export function Button({
     onClick,
     type = 'button',
 }: ButtonProps) {
-    const baseClasses = 'inline-flex items-center justify-center font-medium rounded-xl transition-all touch-manipulation active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none';
+    // Map custom variant to LobeUI (Antd) type
+    let lobeType: "text" | "link" | "default" | "primary" | "dashed" | undefined = 'primary';
+    let isDanger = false;
 
-    const variantClasses = {
-        primary: 'bg-[var(--tg-theme-button-color)] text-[var(--tg-theme-button-text-color)]',
-        secondary: 'bg-[var(--tg-theme-secondary-bg-color)] text-[var(--tg-theme-text-color)]',
-        outline: 'border-2 border-[var(--tg-theme-button-color)] text-[var(--tg-theme-button-color)] bg-transparent',
-        danger: 'bg-red-500 text-white',
-    };
+    if (variant === 'secondary') lobeType = 'default';
+    if (variant === 'outline') lobeType = 'default';
+    if (variant === 'danger') {
+        lobeType = 'primary';
+        isDanger = true;
+    }
 
-    const sizeClasses = {
-        sm: 'px-3 py-1.5 text-sm',
-        md: 'px-4 py-2.5 text-base',
-        lg: 'px-6 py-3 text-lg',
-    };
+    // Map custom size to LobeUI
+    let lobeSize: 'small' | 'middle' | 'large' = 'middle';
+    if (size === 'sm') lobeSize = 'small';
+    if (size === 'lg') lobeSize = 'large';
+
+    // Telegram Theme Overrides for specific variants to match the mini-app spec
+    const styleOverride = variant === 'primary' ? {
+        backgroundColor: 'var(--tg-theme-button-color)',
+        color: 'var(--tg-theme-button-text-color)',
+        border: 'none',
+    } : undefined;
 
     return (
-        <button
-            type={type}
+        <LobeButton
+            type={lobeType}
+            danger={isDanger}
+            size={lobeSize}
+            block={fullWidth}
+            disabled={disabled}
+            loading={loading}
             onClick={onClick}
-            disabled={disabled || loading}
-            className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${fullWidth ? 'w-full' : ''}`}
+            htmlType={type}
+            style={styleOverride}
+            className="rounded-xl transition-all touch-manipulation active:scale-[0.98]"
         >
-            {loading ? (
-                <>
-                    <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    Загрузка...
-                </>
-            ) : (
-                children
-            )}
-        </button>
+            {children}
+        </LobeButton>
     );
 }

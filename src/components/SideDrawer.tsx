@@ -1,6 +1,7 @@
-import { useEffect, useRef, memo } from 'react';
+import { memo } from 'react';
 import { useAppSelector } from '../store';
 import { useTelegram } from '../hooks/useTelegram';
+import { Drawer } from '@lobehub/ui';
 
 interface SideDrawerProps {
     isOpen: boolean;
@@ -9,7 +10,6 @@ interface SideDrawerProps {
 }
 
 export const SideDrawer = memo(function SideDrawer({ isOpen, onClose, onNavigate }: SideDrawerProps) {
-    const drawerRef = useRef<HTMLDivElement>(null);
     const { user: tgUser } = useTelegram();
     const { telegramUser } = useAppSelector((state) => state.auth);
 
@@ -22,29 +22,6 @@ export const SideDrawer = memo(function SideDrawer({ isOpen, onClose, onNavigate
     const photoUrl = tgUser?.photoUrl || null;
     const initial = displayUser?.firstName?.charAt(0) || 'G';
 
-    // Close on escape key
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && isOpen) {
-                onClose();
-            }
-        };
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose]);
-
-    // Prevent body scroll when drawer is open
-    useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
-        return () => {
-            document.body.style.overflow = '';
-        };
-    }, [isOpen]);
-
     const handleNavigate = (page: 'history' | 'profile') => {
         onNavigate(page);
         onClose();
@@ -56,20 +33,17 @@ export const SideDrawer = memo(function SideDrawer({ isOpen, onClose, onNavigate
     };
 
     return (
-        <>
-            {/* Backdrop */}
-            <div
-                className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                    }`}
-                onClick={onClose}
-            />
-
-            {/* Drawer */}
-            <div
-                ref={drawerRef}
-                className={`fixed top-0 left-0 h-full w-72 bg-[var(--tg-theme-bg-color)] z-50 transform transition-transform duration-300 ease-out shadow-2xl ${isOpen ? 'translate-x-0' : '-translate-x-full'
-                    }`}
-            >
+        <Drawer
+            open={isOpen}
+            onClose={onClose}
+            placement="left"
+            width={280}
+            styles={{
+                header: { display: 'none' },
+                body: { padding: 0, backgroundColor: 'var(--tg-theme-bg-color)' },
+            }}
+        >
+            <div className="flex flex-col h-full bg-[var(--tg-theme-bg-color)]">
                 {/* Header - User Info (clickable -> profile) */}
                 <div
                     className="p-6 border-b border-[var(--tg-theme-hint-color)]/20 cursor-pointer active:bg-[var(--tg-theme-secondary-bg-color)] transition-colors"
@@ -98,7 +72,7 @@ export const SideDrawer = memo(function SideDrawer({ isOpen, onClose, onNavigate
                 </div>
 
                 {/* Menu Items */}
-                <nav className="py-4">
+                <nav className="flex-1 py-4 overflow-y-auto">
                     <button
                         onClick={() => handleNavigate('profile')}
                         className="w-full flex items-center gap-4 px-6 py-4 text-left hover:bg-[var(--tg-theme-secondary-bg-color)] transition-colors"
@@ -131,12 +105,12 @@ export const SideDrawer = memo(function SideDrawer({ isOpen, onClose, onNavigate
                 </nav>
 
                 {/* Footer */}
-                <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-[var(--tg-theme-hint-color)]/20">
+                <div className="p-6 border-t border-[var(--tg-theme-hint-color)]/20 mt-auto">
                     <p className="text-xs text-[var(--tg-theme-hint-color)] text-center">
                         GoShare v1.0.0
                     </p>
                 </div>
             </div>
-        </>
+        </Drawer>
     );
 });

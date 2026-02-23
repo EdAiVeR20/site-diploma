@@ -84,60 +84,35 @@ export function RentalPage({ car, onClose, onSuccess }: RentalPageProps) {
         return titles[type] || type;
     };
 
+    const fuelBarCount = Math.ceil(car.fuelLevel / 25);
+    const fuelColor = car.fuelLevel > 25 ? 'bg-green-500' : 'bg-red-500';
+
     return (
-        <div className="flex flex-col min-h-full bg-[var(--tg-theme-bg-color)]">
-            {/* Car Image Header */}
-            <div className="relative h-64 bg-gradient-to-b from-[var(--color-surface)] to-[var(--tg-theme-bg-color)]">
-                {car.imageUrl ? (
-                    <img
-                        src={car.imageUrl}
-                        alt={`${car.brand} ${car.model}`}
-                        className="w-full h-full object-cover"
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <svg className="w-24 h-24 text-[var(--tg-theme-hint-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 17h8M8 17v-4m8 4v-4m-8 0h8m-8 0l-2-4h12l-2 4M6 13V9a2 2 0 012-2h8a2 2 0 012 2v4" />
-                        </svg>
-                    </div>
-                )}
-
-                {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[var(--tg-theme-bg-color)] via-transparent to-transparent" />
-
-                {/* Back button */}
+        <div className="flex flex-col min-h-full bg-[var(--tg-theme-bg-color)] overflow-x-hidden">
+            {/* Header: Back button */}
+            <div className="px-5 pt-4 pb-2">
                 <button
                     onClick={onClose}
-                    className="absolute top-4 left-4 w-10 h-10 rounded-full glass flex items-center justify-center text-white"
+                    className="w-10 h-10 rounded-full bg-[var(--tg-theme-secondary-bg-color)] flex items-center justify-center"
                 >
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    <svg className="w-5 h-5 text-[var(--tg-theme-text-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                     </svg>
                 </button>
             </div>
 
-            {/* Car Info */}
-            <div className="flex-1 px-4 -mt-8 relative z-10 pb-28">
-                {/* Title and License */}
-                <div className="flex items-start justify-between mb-4">
-                    <div>
-                        <h1 className="text-2xl font-bold text-[var(--tg-theme-text-color)]">
-                            {car.brand} {car.model}
-                        </h1>
-                        <span className="inline-block mt-1 px-2 py-0.5 bg-[var(--color-surface)] rounded text-xs text-[var(--tg-theme-hint-color)]">
-                            {car.licensePlate}
-                        </span>
-                    </div>
-                    {/* Fuel indicator */}
-                    <div className="flex items-center gap-2">
-                        <div className="flex gap-0.5">
+            {/* Title row: Name + Battery indicator */}
+            <div className="px-5 pt-2 pb-1">
+                <div className="flex items-start justify-between gap-3">
+                    <h1 className="text-2xl font-bold text-[var(--tg-theme-text-color)] leading-tight">
+                        {car.brand} {car.model}
+                    </h1>
+                    <div className="flex items-center gap-1.5 flex-shrink-0 pt-1">
+                        <div className="flex gap-[3px]">
                             {[...Array(4)].map((_, i) => (
                                 <div
                                     key={i}
-                                    className={`w-1.5 h-4 rounded-sm ${i < Math.ceil(car.fuelLevel / 25)
-                                        ? car.fuelLevel > 25 ? 'bg-green-500' : 'bg-red-500'
-                                        : 'bg-[var(--color-surface)]'
-                                        }`}
+                                    className={`w-[5px] h-4 rounded-sm ${i < fuelBarCount ? fuelColor : 'bg-[var(--tg-theme-hint-color)]/25'}`}
                                 />
                             ))}
                         </div>
@@ -145,44 +120,73 @@ export function RentalPage({ car, onClose, onSuccess }: RentalPageProps) {
                     </div>
                 </div>
 
-                {/* Fuel label */}
-                <div className="flex items-center gap-2 mb-6">
-                    <svg className="w-5 h-5 text-[var(--tg-theme-hint-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    <span className="text-sm text-[var(--tg-theme-hint-color)]">Топливо</span>
-                </div>
+                {/* License plate badge */}
+                <span className="inline-block mt-1.5 px-2.5 py-0.5 bg-[var(--tg-theme-secondary-bg-color)] rounded-md text-xs text-[var(--tg-theme-hint-color)] font-mono border border-[var(--tg-theme-hint-color)]/15">
+                    {car.licensePlate}
+                </span>
+            </div>
 
-                {/* Tariff Selection */}
-                <h2 className="text-lg font-semibold text-[var(--tg-theme-text-color)] mb-3">
-                    Выберите тариф
+            {/* Car Image */}
+            <div className="relative h-52 flex items-center justify-center px-8 my-2">
+                {car.imageUrl ? (
+                    <img
+                        src={car.imageUrl}
+                        alt={`${car.brand} ${car.model}`}
+                        className="h-full w-full object-contain drop-shadow-xl"
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <svg className="w-28 h-28 text-[var(--tg-theme-hint-color)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.8}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 17h8M8 17v-4m8 4v-4m-8 0h8m-8 0l-2-4h12l-2 4M6 13V9a2 2 0 012-2h8a2 2 0 012 2v4" />
+                        </svg>
+                    </div>
+                )}
+                {/* Subtle arc decoration under image */}
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-8 border-b-2 border-[var(--tg-theme-hint-color)]/15 rounded-b-full" />
+            </div>
+
+            {/* Rates section */}
+            <div className="flex-1 pb-28">
+                <h2 className="text-lg font-semibold text-[var(--tg-theme-text-color)] mb-3 px-5">
+                    Тарифы
                 </h2>
 
-                {/* Tariff Cards - horizontal scroll */}
-                <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+                {/* Tariff Cards - horizontal scroll with edge-to-edge scrolling */}
+                <div
+                    className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
+                    style={{ paddingLeft: '1.25rem', paddingRight: '1.25rem' }}
+                >
                     {car.tariffs.map((tariff) => {
                         const isSelected = selectedTariff?.id === tariff.id;
                         return (
                             <button
                                 key={tariff.id}
                                 onClick={() => handleTariffSelect(tariff)}
-                                className={`flex-shrink-0 w-32 p-3 rounded-xl border-2 transition-all ${isSelected
-                                    ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10'
-                                    : 'border-transparent bg-[var(--tg-theme-secondary-bg-color)]'
+                                className={`flex-shrink-0 w-40 rounded-2xl overflow-hidden transition-all text-left ${isSelected
+                                    ? 'border-2 border-[var(--color-accent)] shadow-lg shadow-[var(--color-accent)]/10'
+                                    : 'border-2 border-transparent bg-[var(--tg-theme-secondary-bg-color)]'
                                     }`}
                             >
-                                <p className="text-sm font-medium text-[var(--tg-theme-text-color)] mb-1">
-                                    {getTariffTitle(tariff.type)}
-                                </p>
-                                <p className="text-[10px] text-[var(--tg-theme-hint-color)] mb-3 line-clamp-2">
-                                    {getTariffDescription(tariff.type)}
-                                </p>
-                                <p className={`text-lg font-bold ${isSelected ? 'text-[var(--color-accent)]' : 'price-accent'}`}>
-                                    {tariff.pricePerUnit} ₽
-                                </p>
-                                <p className="text-[10px] text-[var(--tg-theme-hint-color)]">
-                                    /{tariff.type === 'hourly' ? 'час' : tariff.type === 'daily' ? 'сутки' : 'мин'}
-                                </p>
+                                {/* Card content with consistent padding */}
+                                <div className="px-4 pt-4 pb-3">
+                                    <p className="text-sm font-semibold text-[var(--tg-theme-text-color)] mb-1">
+                                        {getTariffTitle(tariff.type)}
+                                    </p>
+                                    <p className="text-[11px] text-[var(--tg-theme-hint-color)] mb-3 leading-snug">
+                                        {getTariffDescription(tariff.type)}
+                                    </p>
+                                    <p className={`text-xl font-bold ${isSelected ? 'text-[var(--color-accent)]' : 'price-accent'}`}>
+                                        {tariff.pricePerUnit} ₽
+                                    </p>
+                                    <p className="text-xs text-[var(--tg-theme-hint-color)] mt-0.5">
+                                        /{tariff.type === 'hourly' ? 'час' : tariff.type === 'daily' ? 'сутки' : 'мин'}
+                                    </p>
+                                </div>
+                                {/* Bottom accent bar — full width inside card */}
+                                <div className={`h-1 ${isSelected
+                                    ? 'bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-accent-light)]'
+                                    : 'bg-gradient-to-r from-[var(--tg-theme-hint-color)]/20 to-[var(--tg-theme-hint-color)]/5'
+                                    }`} />
                             </button>
                         );
                     })}

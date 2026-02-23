@@ -5,10 +5,11 @@ import { Loader, SideDrawer } from './components';
 import { useTelegram } from './hooks/useTelegram';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useAppDispatch, useAppSelector } from './store';
-import { loginWithTelegram, setTelegramUser, setAuthenticating } from './store/slices/authSlice';
-import { selectCar, clearSelectedCar } from './store/slices/carsSlice';
+import { setTelegramUser, setAuthenticating, loginSuccess, loginFailure } from './store/slices/authSlice';
+import { clearSelectedCar } from './store/slices/carsSlice';
 import { setActiveTab, setTelegramReady } from './store/slices/uiSlice';
-import type { Car } from './types';
+import { APP_CONFIG } from './config';
+import { useLogin } from './hooks/queries/useAuth';
 
 // Lazy-loaded pages
 const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })));
@@ -17,8 +18,7 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ defaul
 const RentalPage = lazy(() => import('./pages/RentalPage').then(m => ({ default: m.RentalPage })));
 const VerificationPage = lazy(() => import('./pages/VerificationPage').then(m => ({ default: m.VerificationPage })));
 
-// DEV MODE: Set to true to bypass Telegram and use mock data
-const DEV_MODE = false;
+const { DEV_MODE } = APP_CONFIG;
 
 function AppContent() {
   const dispatch = useAppDispatch();
@@ -28,6 +28,8 @@ function AppContent() {
 
   // App-level geolocation — single watchPosition, never remounts
   useGeolocation();
+
+  const { mutateAsync: loginTelegram } = useLogin();
 
   // Redux state
   const { isAuthenticating } = useAppSelector((state) => state.auth);
@@ -73,22 +75,18 @@ function AppContent() {
 
     const authenticate = async () => {
       try {
-        await dispatch(loginWithTelegram({ telegramUser: tgUser || undefined })).unwrap();
+        const response = await loginTelegram(tgUser || undefined);
+        dispatch(loginSuccess(response));
       } catch (err) {
         console.error('Authentication failed:', err);
+        dispatch(loginFailure(err instanceof Error ? err.message : 'Ошибка авторизации'));
       } finally {
         dispatch(setAuthenticating(false));
       }
     };
 
     authenticate();
-  }, [isReady, tgUser, dispatch]);
-
-  // Memoized handlers
-  const handleSelectCar = useCallback((car: Car) => {
-    dispatch(selectCar(car));
-    navigate('/rental');
-  }, [dispatch, navigate]);
+  }, [isReady, tgUser, dispatch, loginTelegram]);
 
   const handleDrawerNavigate = useCallback((page: 'history' | 'profile') => {
     dispatch(clearSelectedCar());
@@ -114,7 +112,7 @@ function AppContent() {
   }, [navigate]);
 
   const handleOpenDrawer = useCallback(() => {
-    setIsDrawerOpen(prev => !prev);
+    setIsDrawerOpen(true);
   }, []);
 
   const handleCloseDrawer = useCallback(() => {
@@ -149,23 +147,21 @@ function AppContent() {
 
       <div className={DEV_MODE ? 'h-full pt-6' : 'h-full'}>
         <Suspense fallback={<Loader fullScreen text="Загрузка..." />}>
-          {/* Main Map View */}
-          {isMainView && (
+          {/* Main Map View — ALWAYS MOUNTED, hidden via CSS to prevent re-init */}
+          <div style={{ display: isMainView ? 'block' : 'none' }} className="h-full">
             <HomePage
-              onSelectCar={handleSelectCar}
               onOpenDrawer={handleOpenDrawer}
-              isDrawerOpen={isDrawerOpen}
             />
-          )}
+          </div>
 
           {/* Sub Pages (History, Profile) */}
           {isSubPage && (
-            <div className="h-full flex flex-col">
+            <div className="h-full flex flex-col animate-slide-up">
               {/* Back button header */}
               <div className="flex items-center gap-4 p-4 bg-[var(--tg-theme-bg-color)] border-b border-[var(--tg-theme-hint-color)]/10">
                 <button
                   onClick={handleClose}
-                  className="w-10 h-10 rounded-full bg-[var(--tg-theme-secondary-bg-color)] flex items-center justify-center"
+                  className="w-10 h-10 rounded-full bg-[var(--tg-theme-secondary-bg-color)] flex items-center justify-center active:scale-95 transition-transform"
                 >
                   <svg className="w-5 h-5 text-[var(--tg-theme-text-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />

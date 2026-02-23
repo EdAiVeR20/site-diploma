@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Car } from '../types';
 
 // Lazy-load the reactified ymaps components
@@ -30,6 +30,9 @@ interface YandexMapProps {
 const { components, reactify } = await ymapsReady;
 const { YMap, YMapDefaultSchemeLayer, YMapDefaultFeaturesLayer, YMapMarker } = components;
 
+const DEFAULT_CENTER: [number, number] = [37.6173, 55.7558];
+const DEFAULT_ZOOM = 12;
+
 const YandexMapContent = ({
     cars,
     userLocation,
@@ -39,16 +42,16 @@ const YandexMapContent = ({
     centerOnUserTrigger,
     isDark
 }: YandexMapProps) => {
-    const DEFAULT_CENTER: [number, number] = [37.6173, 55.7558];
-    const DEFAULT_ZOOM = 12;
-
+    // Ref to the native YMap instance — used for imperative setLocation()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ymaps3 reactified components don't expose typed ref
+    const mapRef = useRef<any>(null);
     const hasCenteredOnUser = useRef(false);
     const prevCenterTrigger = useRef(centerOnUserTrigger);
     const prevSelectedCarId = useRef(selectedCarId);
 
-    // Compute initial location
-    const getInitialLocation = () => {
-        if (userLocation && !hasCenteredOnUser.current) {
+    // Initial location — computed only once on mount
+    const initialLocation = useMemo(() => {
+        if (userLocation) {
             hasCenteredOnUser.current = true;
             return {
                 center: [userLocation.longitude, userLocation.latitude] as [number, number],
@@ -56,31 +59,34 @@ const YandexMapContent = ({
             };
         }
         return { center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM };
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Intentionally empty — only computed on mount
 
-    const [location, setLocation] = useState(getInitialLocation);
+    // useDefault only sets the initial/default position (uncontrolled mode)
+    const defaultLocation = reactify.useDefault(initialLocation);
 
-    // Center on user when location first becomes available (one-time only)
+    // Smooth pan to a coordinate using the imperative map API
+    const panTo = useCallback((center: [number, number], zoom: number) => {
+        if (mapRef.current) {
+            mapRef.current.setLocation({ center, zoom, duration: 400 });
+        }
+    }, []);
+
+    // Center on user when location first becomes available (one-time)
     useEffect(() => {
         if (userLocation && !hasCenteredOnUser.current) {
             hasCenteredOnUser.current = true;
-            setLocation({
-                center: [userLocation.longitude, userLocation.latitude],
-                zoom: 15
-            });
+            panTo([userLocation.longitude, userLocation.latitude], 15);
         }
-    }, [userLocation]);
+    }, [userLocation, panTo]);
 
     // Handle centerOnUserTrigger changes (location button pressed)
     useEffect(() => {
         if (centerOnUserTrigger !== prevCenterTrigger.current && userLocation) {
             prevCenterTrigger.current = centerOnUserTrigger;
-            setLocation({
-                center: [userLocation.longitude, userLocation.latitude],
-                zoom: 16
-            });
+            panTo([userLocation.longitude, userLocation.latitude], 16);
         }
-    }, [centerOnUserTrigger, userLocation]);
+    }, [centerOnUserTrigger, userLocation, panTo]);
 
     // Center on selected car — only when selectedCarId actually CHANGES
     useEffect(() => {
@@ -88,15 +94,12 @@ const YandexMapContent = ({
             prevSelectedCarId.current = selectedCarId;
             const car = cars.find(c => c.id === selectedCarId);
             if (car) {
-                setLocation({
-                    center: [car.longitude, car.latitude],
-                    zoom: 16
-                });
+                panTo([car.longitude, car.latitude], 16);
             }
         } else if (!selectedCarId) {
             prevSelectedCarId.current = undefined;
         }
-    }, [selectedCarId, cars]);
+    }, [selectedCarId, cars, panTo]);
 
     // Handle marker tap: re-click on selected → open details
     const handleMarkerTap = useCallback((car: Car) => {
@@ -109,8 +112,8 @@ const YandexMapContent = ({
 
     // Find the best price to show on selected marker
     const getMarkerPrice = (car: Car) => {
-        const hourlyTariff = car.tariffs.find(t => t.type === 'hourly');
         const minuteTariff = car.tariffs.find(t => t.type === 'minute');
+        const hourlyTariff = car.tariffs.find(t => t.type === 'hourly');
         if (minuteTariff) return `${minuteTariff.pricePerUnit} ₽/мин`;
         if (hourlyTariff) return `${hourlyTariff.pricePerUnit} ₽/час`;
         return '';
@@ -118,7 +121,8 @@ const YandexMapContent = ({
 
     return (
         <YMap
-            location={reactify.useDefault(location)}
+            ref={mapRef}
+            location={defaultLocation}
             theme={isDark ? 'dark' : 'light'}
         >
             <YMapDefaultSchemeLayer />
