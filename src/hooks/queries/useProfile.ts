@@ -9,7 +9,7 @@ const MOCK_USER: User = {
     id: '1',
     telegramId: 123456789,
     firstName: 'Тест',
-    lastName: 'Пользователь',
+    lastName: '',
     username: 'testuser',
     balance: 1500,
     verificationStatus: 'none',

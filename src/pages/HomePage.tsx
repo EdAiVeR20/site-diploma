@@ -1,4 +1,4 @@
-import { useState, useCallback, memo, useMemo } from 'react';
+import { useState, useCallback, memo, useMemo, useEffect } from 'react';
 import { YandexMap, LocationButton, CarCarousel, Button } from '../components';
 import { Drawer } from '@lobehub/ui';
 import { useAppDispatch, useAppSelector } from '../store';
@@ -7,9 +7,46 @@ import { useTelegram } from '../hooks/useTelegram';
 import { useAvailableCars } from '../hooks/queries/useCars';
 import { useCreateRental } from '../hooks/queries/useRentals';
 import type { Car, Tariff } from '../types';
+import toast from 'react-hot-toast';
+
+// --- Custom Collapsible Toast ---
+const CollapsibleToast = ({
+    title,
+    description,
+    icon,
+    pulse = false
+}: {
+    title: string,
+    description?: string,
+    icon: React.ReactNode,
+    pulse?: boolean
+}) => {
+    const [minimized, setMinimized] = useState(true);
+
+    return (
+        <div
+            className={`relative overflow-hidden flex items-center rounded-full text-[var(--tg-theme-text-color)] transition-all duration-500 ease-in-out cursor-pointer pointer-events-auto bg-[var(--tg-theme-bg-color)] shadow-lg border border-[var(--tg-theme-hint-color)]/20 ${minimized ? 'w-12 h-12 p-0 justify-center' : 'w-auto max-w-[calc(100vw-32px)] min-h-[48px] px-2 pr-5 py-2 gap-2.5'}`}
+            onClick={() => setMinimized((prev) => !prev)}
+            style={{ transform: 'translateZ(0)' }} // Hardware acceleration for smooth transition
+        >
+            <div className={`flex-shrink-0 flex items-center justify-center ${minimized ? 'w-12 h-12' : 'w-8 h-8 pl-1.5'} ${pulse && minimized ? 'animate-pulse' : ''} transition-all duration-500`}>
+                {icon}
+            </div>
+
+            <div className={`transition-all duration-400 overflow-hidden flex items-center justify-between whitespace-nowrap ${minimized ? 'w-0 opacity-0' : 'opacity-100 flex-1'}`}>
+                <div className="flex flex-col overflow-hidden">
+                    <span className="text-sm font-medium pr-1 truncate">{title}</span>
+                    {description && <span className="text-[11px] text-[var(--tg-theme-hint-color)] truncate leading-tight mt-0.5">{description}</span>}
+                </div>
+            </div>
+        </div>
+    );
+};
+// --------------------------------
 
 interface HomePageProps {
     onOpenDrawer: () => void;
+    isActive?: boolean;
 }
 
 /** Retry delays: handled internally by React Query */
@@ -168,7 +205,7 @@ const ExpandedCarDetails = memo(function ExpandedCarDetails({
     );
 });
 
-export const HomePage = memo(function HomePage({ onOpenDrawer }: HomePageProps) {
+export const HomePage = memo(function HomePage({ onOpenDrawer, isActive = true }: HomePageProps) {
     const dispatch = useAppDispatch();
     const { geolocation } = useAppSelector((state) => state.ui);
     const { selectedTariff } = useAppSelector((state) => state.rentals);
@@ -191,14 +228,94 @@ export const HomePage = memo(function HomePage({ onOpenDrawer }: HomePageProps) 
     });
 
     // Local state
-    const [geoWarningDismissed, setGeoWarningDismissed] = useState(false);
     const [selectedCarId, setSelectedCarId] = useState<string | undefined>();
     const [centerOnUserTrigger, setCenterOnUserTrigger] = useState(0);
-    const [errorDismissed, setErrorDismissed] = useState(false);
 
     // Drawer state
     const [expandedCar, setExpandedCar] = useState<Car | null>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+    // ─── Unified Status Toast ───
+    useEffect(() => {
+        let toastProps: { title: string; description?: string; icon: React.ReactNode; pulse?: boolean; } | null = null;
+
+        // Priority 1: Server Error
+        if (hasCarsError && cars.length === 0) {
+            toastProps = {
+                title: "Сервер недоступен",
+                description: isCarsFetching ? 'Автопереподключение...' : 'Ожидание сети...',
+                icon: isCarsFetching ? (
+                    <div className="w-5 h-5 border-[2.5px] border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
+                ) : (
+                    <svg className="w-6 h-6 text-red-500 drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                ),
+                pulse: !isCarsFetching,
+            };
+        }
+        // Priority 2: Geolocation Loading
+        else if (geoLoading) {
+            toastProps = {
+                title: "Определяем местоположение",
+                description: undefined,
+                icon: <div className="w-5 h-5 border-[2.5px] border-blue-500 border-t-transparent rounded-full animate-spin" />,
+            };
+        }
+        // Priority 3: Geolocation Warning
+        else if (!geoLoading && geoError) {
+            toastProps = {
+                title: "Включите геолокацию",
+                description: "Для точного определения машин",
+                icon: (
+                    <svg className="w-6 h-6 text-amber-500 drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                )
+            };
+        }
+        // Priority 4: Cars Loading
+        else if (carsLoading && cars.length === 0) {
+            toastProps = {
+                title: "Ищем машины...",
+                description: undefined,
+                icon: <div className="w-5 h-5 border-[2.5px] border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />,
+            };
+        }
+
+        if (!isActive) {
+            // Remove instantly without animation when switching screens
+            toast.remove('global-status');
+            return;
+        }
+
+        if (toastProps) {
+            toast.custom((t) => (
+                <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} pointer-events-none mt-1 mr-1`}>
+                    <CollapsibleToast
+                        title={toastProps.title}
+                        description={toastProps.description}
+                        icon={toastProps.icon}
+                        pulse={toastProps.pulse}
+                    />
+                </div>
+            ), {
+                id: 'global-status',
+                duration: Infinity,
+            });
+        } else {
+            // Dismiss gracefully with animation when content is loaded
+            toast.dismiss('global-status');
+        }
+    }, [hasCarsError, cars.length, isCarsFetching, geoLoading, geoError, carsLoading, isActive]);
+
+    // Cleanup toasts when unmounting HomePage (e.g., navigating to Profile)
+    useEffect(() => {
+        return () => {
+            toast.remove('global-status');
+        };
+    }, []);
 
     // ─── Handlers ───
 
@@ -277,11 +394,6 @@ export const HomePage = memo(function HomePage({ onOpenDrawer }: HomePageProps) 
         setSelectedCarId(undefined);
     }, []);
 
-    const handleDismissGeoWarning = useCallback(() => setGeoWarningDismissed(true), []);
-    const handleDismissError = useCallback(() => setErrorDismissed(true), []);
-
-    const showGeoWarning = !geoLoading && geoError && !geoWarningDismissed;
-    const showErrorBanner = hasCarsError && !errorDismissed && cars.length === 0;
 
     const userLocation = useMemo(
         () => latitude && longitude ? { latitude, longitude } : undefined,
@@ -290,35 +402,12 @@ export const HomePage = memo(function HomePage({ onOpenDrawer }: HomePageProps) 
 
     return (
         <div className="relative h-full w-full overflow-hidden">
-            {/* Geolocation Warning */}
-            {showGeoWarning && (
-                <div className="absolute top-4 left-4 right-4 z-40 animate-slide-up">
-                    <div className="glass rounded-2xl p-3.5 flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-                            <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                        </div>
-                        <p className="text-sm text-[var(--tg-theme-text-color)] flex-1">
-                            Включите геолокацию для точного определения машин
-                        </p>
-                        <button
-                            onClick={handleDismissGeoWarning}
-                            className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors flex-shrink-0"
-                        >
-                            <svg className="w-4 h-4 text-[var(--tg-theme-hint-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            )}
+            {/* Geo loading indicator removed and merged into unified toast system */}
 
             {/* Hamburger menu */}
             <button
                 onClick={onOpenDrawer}
-                className="absolute top-4 left-4 z-30 w-12 h-12 rounded-full bg-[var(--tg-theme-bg-color)] shadow-lg flex items-center justify-center border border-[var(--tg-theme-hint-color)]/20 active:scale-95 transition-transform"
+                className="absolute top-4 left-4 z-[40] w-12 h-12 rounded-full bg-[var(--tg-theme-bg-color)] shadow-lg flex items-center justify-center border border-[var(--tg-theme-hint-color)]/20 active:scale-95 transition-transform"
                 aria-label="Открыть меню"
             >
                 <svg className="w-6 h-6 text-[var(--tg-theme-text-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -327,7 +416,7 @@ export const HomePage = memo(function HomePage({ onOpenDrawer }: HomePageProps) 
             </button>
 
             {/* Location button */}
-            <div className="absolute top-1/2 right-4 z-30 transform -translate-y-1/2">
+            <div className="absolute top-1/2 right-4 z-[40] transform -translate-y-1/2">
                 <LocationButton onClick={handleCenterOnUser} />
             </div>
 
@@ -341,55 +430,6 @@ export const HomePage = memo(function HomePage({ onOpenDrawer }: HomePageProps) 
                 centerOnUserTrigger={centerOnUserTrigger}
                 className="!rounded-none"
             />
-
-            {/* Loading */}
-            {carsLoading && cars.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-20">
-                    <div className="glass rounded-2xl p-5 flex flex-col items-center gap-3 shadow-xl">
-                        <div className="w-8 h-8 border-3 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
-                        <span className="text-sm text-[var(--tg-theme-text-color)]">Ищем машины...</span>
-                    </div>
-                </div>
-            )}
-
-            {/* Server error */}
-            {showErrorBanner && (
-                <div className="absolute inset-0 flex items-center justify-center z-20 px-8">
-                    <div className="glass rounded-3xl p-8 flex flex-col items-center text-center max-w-xs animate-slide-up">
-                        <div className="w-16 h-16 rounded-full bg-red-500/15 flex items-center justify-center mb-4">
-                            <svg className="w-8 h-8 text-red-400 animate-pulse-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                            </svg>
-                        </div>
-                        <h3 className="text-lg font-semibold text-[var(--tg-theme-text-color)] mb-1">
-                            Сервер недоступен
-                        </h3>
-                        <p className="text-sm text-[var(--tg-theme-hint-color)] mb-4">
-                            {isCarsFetching
-                                ? 'Пробуем подключиться...'
-                                : 'Ожидание сети...'
-                            }
-                        </p>
-                        {isCarsFetching && (
-                            <div className="w-5 h-5 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
-                        )}
-                        <button
-                            onClick={handleDismissError}
-                            className="mt-3 text-xs text-[var(--tg-theme-hint-color)] underline"
-                        >
-                            Скрыть
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Geo loading */}
-            {geoLoading && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 glass px-4 py-2 rounded-full flex items-center gap-2">
-                    <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs text-[var(--tg-theme-hint-color)]">Определяем...</span>
-                </div>
-            )}
 
             {/* Car Carousel */}
             {cars.length > 0 && (

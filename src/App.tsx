@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import './index.css';
 import { Loader, SideDrawer } from './components';
 import { useTelegram } from './hooks/useTelegram';
@@ -58,7 +59,7 @@ function AppContent() {
       dispatch(setTelegramUser({
         id: 123456789,
         firstName: 'Тест',
-        lastName: 'Пользователь',
+        lastName: '',
         username: 'testuser',
       }));
       dispatch(setAuthenticating(false));
@@ -151,6 +152,7 @@ function AppContent() {
           <div style={{ display: isMainView ? 'block' : 'none' }} className="h-full">
             <HomePage
               onOpenDrawer={handleOpenDrawer}
+              isActive={isMainView}
             />
           </div>
 
@@ -218,6 +220,14 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
+      <Toaster
+        position="top-right"
+        containerClassName="!p-4"
+        containerStyle={{ pointerEvents: 'none', zIndex: 9999 }}
+        toastOptions={{
+          duration: Infinity,
+        }}
+      />
       <AppContent />
     </BrowserRouter>
   );
