@@ -15,10 +15,10 @@ import type {
 export const authApi = {
     /**
      * Авторизация через Telegram
-     * Init data передаётся автоматически через interceptor
+     * Передает initData на сервер для валидации и получения JWT
      */
-    login: async (): Promise<AuthResponse> => {
-        const { data } = await apiClient.post<AuthResponse>('/auth/telegram');
+    login: async (initData: string): Promise<AuthResponse> => {
+        const { data } = await apiClient.post<AuthResponse>('/auth/telegram', { initData });
         if (data.accessToken) {
             localStorage.setItem('accessToken', data.accessToken);
         }
@@ -39,6 +39,16 @@ export const carsApi = {
         const { data } = await apiClient.get<CarsResponse>('/cars/available', {
             params: { lat, lon, radius },
         });
+
+        // Ensure imageUrls point to the backend domain instead of relative to the frontend domain.
+        const baseUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || '';
+        if (data && Array.isArray(data.cars)) {
+            data.cars = data.cars.map(car => ({
+                ...car,
+                imageUrl: car.imageUrl && car.imageUrl.startsWith('/') ? `${baseUrl}${car.imageUrl}` : car.imageUrl
+            }));
+        }
+
         return data;
     },
 
@@ -47,6 +57,13 @@ export const carsApi = {
      */
     getById: async (carId: string) => {
         const { data } = await apiClient.get(`/cars/${carId}`);
+
+        // Ensure imageUrl points to the backend domain
+        const baseUrl = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || '';
+        if (data && data.imageUrl && data.imageUrl.startsWith('/')) {
+            data.imageUrl = `${baseUrl}${data.imageUrl}`;
+        }
+
         return data;
     },
 };

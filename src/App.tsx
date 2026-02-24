@@ -25,7 +25,7 @@ function AppContent() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isReady, user: tgUser } = useTelegram();
+  const { isReady, user: tgUser, initData } = useTelegram();
 
   // App-level geolocation — single watchPosition, never remounts
   useGeolocation();
@@ -76,7 +76,7 @@ function AppContent() {
 
     const authenticate = async () => {
       try {
-        const response = await loginTelegram(tgUser || undefined);
+        const response = await loginTelegram({ user: tgUser || undefined, initData });
         dispatch(loginSuccess(response));
       } catch (err) {
         console.error('Authentication failed:', err);
@@ -87,7 +87,7 @@ function AppContent() {
     };
 
     authenticate();
-  }, [isReady, tgUser, dispatch, loginTelegram]);
+  }, [isReady, tgUser, initData, dispatch, loginTelegram]);
 
   const handleDrawerNavigate = useCallback((page: 'history' | 'profile') => {
     dispatch(clearSelectedCar());

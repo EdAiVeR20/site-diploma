@@ -7,6 +7,7 @@ type TelegramWebApp = NonNullable<typeof window.Telegram>['WebApp'];
 interface UseTelegramReturn {
     tg: TelegramWebApp | null;
     user: TelegramUser | null;
+    initData: string;
     isReady: boolean;
     colorScheme: 'light' | 'dark';
     viewportHeight: number;
@@ -128,6 +129,7 @@ export function useTelegram(): UseTelegramReturn {
     return {
         tg: tg ?? null,
         user,
+        initData: tg?.initData ?? '',
         isReady,
         colorScheme,
         viewportHeight,
