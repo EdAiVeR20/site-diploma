@@ -10,7 +10,7 @@ interface ProfilePageProps {
 
 export function ProfilePage({ onNavigateToVerification }: ProfilePageProps) {
     const { user: tgUser, showAlert, hapticFeedback } = useTelegram();
-    const { telegramUser } = useAppSelector((state) => state.auth);
+    const { telegramUser, balance } = useAppSelector((state) => state.auth);
 
     const tgUserData = tgUser ? {
         id: tgUser.id,
@@ -79,7 +79,7 @@ export function ProfilePage({ onNavigateToVerification }: ProfilePageProps) {
             <div className="balance-card mb-4 text-white animate-slide-up" style={{ animationDelay: '0.1s' }}>
                 <p className="text-sm opacity-80 mb-1">Баланс</p>
                 <p className="text-3xl font-bold tracking-tight">
-                    {profile?.balance?.toLocaleString('ru-RU') ?? 0} ₽
+                    {(balance ?? 0).toLocaleString('ru-RU')} ₽
                 </p>
             </div>
 
