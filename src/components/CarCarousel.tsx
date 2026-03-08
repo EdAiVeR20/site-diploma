@@ -64,6 +64,9 @@ function CarCarouselInner({
     // Vertical drag detection
     const touchStartRef = useRef<{ x: number; y: number; car: Car } | null>(null);
     const hasDragTriggered = useRef(false);
+    // Track whether auto-scroll should happen (only on user-initiated selection)
+    const pendingScrollRef = useRef(false);
+    const prevSelectedCarIdRef = useRef<string | undefined>(selectedCarId);
 
     const setCardRef = useCallback((el: HTMLDivElement | null, carId: string) => {
         if (el) cardRefs.current.set(carId, el);
@@ -112,8 +115,12 @@ function CarCarouselInner({
         setTimeout(() => { hasDragTriggered.current = false; }, 50);
     }, []);
 
-    // Auto-scroll to selected card
+    // Auto-scroll to selected card — only when selectedCarId actually changes,
+    // NOT on background data refetches that produce a new `cars` array reference.
     useEffect(() => {
+        if (selectedCarId === prevSelectedCarIdRef.current && !pendingScrollRef.current) return;
+        prevSelectedCarIdRef.current = selectedCarId;
+        pendingScrollRef.current = false;
         if (!selectedCarId || !scrollRef.current) return;
         const idx = cars.findIndex(c => c.id === selectedCarId);
         if (idx === -1) return;

@@ -64,7 +64,10 @@ export function ProfilePage({ onNavigateToVerification }: ProfilePageProps) {
     
     // Use profile data from 1C if available, fallback to Redux state
     const displayBalance = profile?.balance !== undefined ? profile.balance : balance;
-    const displayPhone = profile?.phoneNumber || phoneNumber;
+    // Filter out the 'shared' placeholder — it's not a real phone number
+    const profilePhone = profile?.phoneNumber;
+    const reduxPhone = phoneNumber && phoneNumber !== 'shared' ? phoneNumber : null;
+    const displayPhone = profilePhone || reduxPhone;
     const hasPhone = !!displayPhone;
 
     if (isLoading && !displayUser && !hasPhone) {

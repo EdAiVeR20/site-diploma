@@ -57,8 +57,11 @@ export const useProfile = ({ telegramUser }: UseProfileProps = {}) => {
             }
             return MOCK_USER;
         },
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 0, // Always treat as stale — enables background refetch for real-time balance
         refetchInterval: 10000, // Refetch every 10 seconds to update balance and active rentals
+        refetchIntervalInBackground: false, // Don't refetch when tab is inactive
+        refetchOnWindowFocus: true, // Refresh when user returns to the app
+        retry: 2, // Retry on transient 1C failures
     });
 };
 

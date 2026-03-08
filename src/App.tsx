@@ -80,12 +80,15 @@ function AppContent() {
         dispatch(loginSuccess(response));
 
         // Request phone number if not already shared
-        if (!response.phoneNumber) {
+        // Запрашиваем только если: номер не вернулся от 1С И пользователь ещё не делился в этой сессии
+        const alreadyShared = sessionStorage.getItem('phone_shared');
+        if (!response.phoneNumber && !alreadyShared) {
           try {
             await requestContact();
             // Phone is sent to bot via webhook → 1C saves it
             // We mark it as 'shared' locally so we don't ask again this session
             dispatch(setPhoneNumber('shared'));
+            sessionStorage.setItem('phone_shared', 'true');
           } catch {
             // User declined — that's ok, they can share later from Profile
           }
