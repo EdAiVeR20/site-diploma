@@ -61,7 +61,11 @@ export function ProfilePage({ onNavigateToVerification }: ProfilePageProps) {
 
     const displayUser = tgUser || telegramUser;
     const verificationInfo = getVerificationStatusText(profile?.verificationStatus ?? 'none');
-    const hasPhone = !!phoneNumber || !!profile?.phoneNumber;
+    
+    // Use profile data from 1C if available, fallback to Redux state
+    const displayBalance = profile?.balance !== undefined ? profile.balance : balance;
+    const displayPhone = profile?.phoneNumber || phoneNumber;
+    const hasPhone = !!displayPhone;
 
     if (isLoading && !displayUser && !hasPhone) {
         return <Loader fullScreen text="Загрузка профиля..." />;
@@ -100,7 +104,7 @@ export function ProfilePage({ onNavigateToVerification }: ProfilePageProps) {
             <div className="balance-card mb-4 text-white animate-slide-up" style={{ animationDelay: '0.1s' }}>
                 <p className="text-sm opacity-80 mb-1">Баланс</p>
                 <p className="text-3xl font-bold tracking-tight">
-                    {(balance ?? 0).toLocaleString('ru-RU')} ₽
+                    {(displayBalance ?? 0).toLocaleString('ru-RU')} ₽
                 </p>
             </div>
 
@@ -152,7 +156,7 @@ export function ProfilePage({ onNavigateToVerification }: ProfilePageProps) {
                         <p className="text-sm text-[var(--tg-theme-hint-color)]">Телефон</p>
                         {hasPhone ? (
                             <p className="font-medium text-[var(--tg-theme-text-color)]">
-                                {profile?.phoneNumber || 'Привязан к Telegram'}
+                                {displayPhone || 'Привязан к Telegram'}
                             </p>
                         ) : (
                             <p className="font-medium text-[var(--tg-theme-hint-color)]">
