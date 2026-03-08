@@ -14,6 +14,7 @@ export interface User {
     username?: string;
     firstName: string;
     lastName?: string;
+    phoneNumber?: string;
     balance: number;
     verificationStatus: VerificationStatus;
     hasActiveRental: boolean;
@@ -61,6 +62,7 @@ export interface AuthResponse {
     userId: string;
     isVerified: boolean;
     balance: number;
+    phoneNumber?: string;
     accessToken: string;
 }
 

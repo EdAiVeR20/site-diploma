@@ -1,6 +1,8 @@
+import { useState, useCallback } from 'react';
 import { Button, Loader } from '../components';
 import { useTelegram } from '../hooks/useTelegram';
-import { useAppSelector } from '../store';
+import { useAppSelector, useAppDispatch } from '../store';
+import { setPhoneNumber } from '../store/slices/authSlice';
 import { useProfile } from '../hooks/queries/useProfile';
 import type { VerificationStatus } from '../types';
 
@@ -9,8 +11,10 @@ interface ProfilePageProps {
 }
 
 export function ProfilePage({ onNavigateToVerification }: ProfilePageProps) {
-    const { user: tgUser, showAlert, hapticFeedback } = useTelegram();
-    const { telegramUser, balance } = useAppSelector((state) => state.auth);
+    const dispatch = useAppDispatch();
+    const { user: tgUser, showAlert, hapticFeedback, requestContact } = useTelegram();
+    const { telegramUser, balance, phoneNumber } = useAppSelector((state) => state.auth);
+    const [isRequesting, setIsRequesting] = useState(false);
 
     const tgUserData = tgUser ? {
         id: tgUser.id,
@@ -34,17 +38,34 @@ export function ProfilePage({ onNavigateToVerification }: ProfilePageProps) {
         }
     };
 
+    const handleRequestPhone = useCallback(async () => {
+        if (isRequesting) return;
+        setIsRequesting(true);
+        try {
+            const result = await requestContact();
+            if (result === 'shared') {
+                hapticFeedback('success');
+                dispatch(setPhoneNumber('shared'));
+            }
+        } catch {
+            // User cancelled — that's ok
+        } finally {
+            setIsRequesting(false);
+        }
+    }, [isRequesting, requestContact, hapticFeedback, dispatch]);
+
     const handleLogout = async () => {
         hapticFeedback('warning');
         await showAlert('Для выхода закройте мини-приложение');
     };
 
-    if (isLoading) {
-        return <Loader fullScreen text="Загрузка профиля..." />;
-    }
-
     const displayUser = tgUser || telegramUser;
     const verificationInfo = getVerificationStatusText(profile?.verificationStatus ?? 'none');
+    const hasPhone = !!phoneNumber || !!profile?.phoneNumber;
+
+    if (isLoading && !displayUser && !hasPhone) {
+        return <Loader fullScreen text="Загрузка профиля..." />;
+    }
 
     return (
         <div className="flex flex-col min-h-full px-4 pt-4 pb-6">
@@ -121,21 +142,34 @@ export function ProfilePage({ onNavigateToVerification }: ProfilePageProps) {
                 )}
 
                 {/* Phone Number */}
-                {displayUser && (
-                    <div className="flex items-center gap-3 p-4 card animate-slide-up" style={{ animationDelay: '0.22s' }}>
-                        <div className="w-10 h-10 rounded-full bg-[var(--color-surface)] flex items-center justify-center">
-                            <svg className="w-5 h-5 text-[var(--tg-theme-hint-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="text-sm text-[var(--tg-theme-hint-color)]">Телефон</p>
-                            <p className="font-medium text-[var(--tg-theme-text-color)]">
-                                Привязан к Telegram
-                            </p>
-                        </div>
+                <div className="flex items-center gap-3 p-4 card animate-slide-up" style={{ animationDelay: '0.22s' }}>
+                    <div className="w-10 h-10 rounded-full bg-[var(--color-surface)] flex items-center justify-center">
+                        <svg className="w-5 h-5 text-[var(--tg-theme-hint-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
                     </div>
-                )}
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm text-[var(--tg-theme-hint-color)]">Телефон</p>
+                        {hasPhone ? (
+                            <p className="font-medium text-[var(--tg-theme-text-color)]">
+                                {profile?.phoneNumber || 'Привязан к Telegram'}
+                            </p>
+                        ) : (
+                            <p className="font-medium text-[var(--tg-theme-hint-color)]">
+                                Не указан
+                            </p>
+                        )}
+                    </div>
+                    {!hasPhone && (
+                        <Button
+                            size="sm"
+                            onClick={handleRequestPhone}
+                            disabled={isRequesting}
+                        >
+                            {isRequesting ? '...' : 'Указать'}
+                        </Button>
+                    )}
+                </div>
 
                 {/* Telegram ID */}
                 <div className="flex items-center gap-3 p-4 card animate-slide-up" style={{ animationDelay: '0.25s' }}>

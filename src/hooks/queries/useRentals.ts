@@ -3,7 +3,7 @@ import { rentalsApi } from '../../api';
 import { APP_CONFIG } from '../../config';
 import type { RentalResponse, CompleteRentalResponse } from '../../types';
 
-const { DEV_MODE } = APP_CONFIG;
+const { USE_BACKEND } = APP_CONFIG;
 
 export const rentalKeys = {
     all: ['rentals'] as const,
@@ -15,7 +15,7 @@ export const useRentalHistory = () => {
     return useQuery({
         queryKey: rentalKeys.history(),
         queryFn: async () => {
-            if (DEV_MODE) {
+            if (!USE_BACKEND) {
                 await new Promise(resolve => setTimeout(resolve, 300));
                 return [];
             }
@@ -30,7 +30,7 @@ export const useCurrentRental = () => {
     return useQuery({
         queryKey: rentalKeys.current(),
         queryFn: async () => {
-            if (DEV_MODE) {
+            if (!USE_BACKEND) {
                 return null;
             }
             return await rentalsApi.getCurrent();
@@ -45,7 +45,7 @@ export const useCreateRental = () => {
 
     return useMutation({
         mutationFn: async ({ carId, tariffId }: { carId: string; tariffId: string }) => {
-            if (DEV_MODE) {
+            if (!USE_BACKEND) {
                 await new Promise(resolve => setTimeout(resolve, 500));
                 const mockResponse: RentalResponse = {
                     rentalId: `rental-${Date.now()}`,
@@ -73,7 +73,7 @@ export const useCompleteRental = () => {
 
     return useMutation({
         mutationFn: async ({ rentalId, endLatitude, endLongitude }: { rentalId: string; endLatitude: number; endLongitude: number }) => {
-            if (DEV_MODE) {
+            if (!USE_BACKEND) {
                 await new Promise(resolve => setTimeout(resolve, 500));
                 const mockResponse: CompleteRentalResponse = {
                     rentalId,

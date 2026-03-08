@@ -8,6 +8,7 @@ interface AuthState {
     userId: string | null;
     isVerified: boolean;
     balance: number;
+    phoneNumber: string | null;
     telegramUser: TelegramUser | null;
     error: string | null;
 }
@@ -18,6 +19,7 @@ const initialState: AuthState = {
     userId: null,
     isVerified: false,
     balance: 0,
+    phoneNumber: null,
     telegramUser: null,
     error: null,
 };
@@ -50,7 +52,11 @@ const authSlice = createSlice({
             state.userId = action.payload.userId;
             state.isVerified = action.payload.isVerified;
             state.balance = action.payload.balance;
+            state.phoneNumber = action.payload.phoneNumber || null;
             state.error = null;
+        },
+        setPhoneNumber: (state, action: PayloadAction<string>) => {
+            state.phoneNumber = action.payload;
         },
         loginFailure: (state, action: PayloadAction<string>) => {
             state.isAuthenticating = false;
@@ -59,5 +65,5 @@ const authSlice = createSlice({
     },
 });
 
-export const { setTelegramUser, logout, updateBalance, setAuthenticating, loginSuccess, loginFailure } = authSlice.actions;
+export const { setTelegramUser, logout, updateBalance, setAuthenticating, loginSuccess, loginFailure, setPhoneNumber } = authSlice.actions;
 export default authSlice.reducer;

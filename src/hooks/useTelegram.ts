@@ -18,6 +18,7 @@ interface UseTelegramReturn {
     hapticFeedback: (type: 'success' | 'error' | 'warning' | 'light' | 'medium' | 'heavy') => void;
     showAlert: (message: string) => Promise<void>;
     showConfirm: (message: string) => Promise<boolean>;
+    requestContact: () => Promise<string | null>;
     close: () => void;
 }
 
@@ -126,6 +127,35 @@ export function useTelegram(): UseTelegramReturn {
         tg?.close();
     }, [tg]);
 
+    const requestContact = useCallback((): Promise<string | null> => {
+        return new Promise((resolve) => {
+            if (!tg) {
+                resolve(null);
+                return;
+            }
+
+            // Use Telegram WebApp requestContact — shows native popup
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const webApp = tg as any;
+            if (typeof webApp.requestContact !== 'function') {
+                // requestContact is not available (older version of Telegram)
+                resolve(null);
+                return;
+            }
+
+            webApp.requestContact((sent: boolean) => {
+                if (sent) {
+                    // The phone number was shared via the bot — we get it from initDataUnsafe
+                    // Note: Telegram sends the contact to the bot, not directly to the Mini App
+                    // The bot can then forward it. For now, we flag the intent.
+                    resolve('shared');
+                } else {
+                    resolve(null);
+                }
+            });
+        });
+    }, [tg]);
+
     return {
         tg: tg ?? null,
         user,
@@ -140,6 +170,7 @@ export function useTelegram(): UseTelegramReturn {
         hapticFeedback,
         showAlert,
         showConfirm,
+        requestContact,
         close,
     };
 }

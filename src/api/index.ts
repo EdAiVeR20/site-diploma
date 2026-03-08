@@ -17,8 +17,11 @@ export const authApi = {
      * Авторизация через Telegram
      * Передает initData на сервер для валидации и получения JWT
      */
-    login: async (initData: string): Promise<AuthResponse> => {
-        const { data } = await apiClient.post<AuthResponse>('/auth/telegram', { initData });
+    login: async (initData: string, phoneNumber?: string): Promise<AuthResponse> => {
+        const { data } = await apiClient.post<AuthResponse>('/auth/telegram', {
+            initData,
+            ...(phoneNumber ? { phoneNumber } : {}),
+        });
         if (data.accessToken) {
             localStorage.setItem('accessToken', data.accessToken);
         }
@@ -74,7 +77,7 @@ export const rentalsApi = {
      * Создать новую аренду
      */
     create: async (request: CreateRentalRequest): Promise<RentalResponse> => {
-        const { data } = await apiClient.post<RentalResponse>('/rentals', request);
+        const { data } = await apiClient.post<RentalResponse>('/rentals/start', request);
         return data;
     },
 
@@ -94,9 +97,10 @@ export const rentalsApi = {
      * Завершить аренду
      */
     complete: async (rentalId: string, request: CompleteRentalRequest): Promise<CompleteRentalResponse> => {
+        // According to our new backend, endRental expects { rentalId } in the body, let's merge them
         const { data } = await apiClient.post<CompleteRentalResponse>(
-            `/rentals/${rentalId}/complete`,
-            request
+            `/rentals/end`,
+            { rentalId, ...request }
         );
         return data;
     },

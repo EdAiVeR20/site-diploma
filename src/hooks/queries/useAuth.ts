@@ -7,7 +7,7 @@ const { USE_BACKEND } = APP_CONFIG;
 
 export const useLogin = () => {
     return useMutation({
-        mutationFn: async ({ user, initData }: { user?: TelegramUser; initData?: string }) => {
+        mutationFn: async ({ user, initData, phoneNumber }: { user?: TelegramUser; initData?: string; phoneNumber?: string }) => {
             // If no backend, return auth response based on Telegram data
             if (!USE_BACKEND) {
                 await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate network
@@ -28,8 +28,8 @@ export const useLogin = () => {
                 } as AuthResponse;
             }
 
-            // Use backend for authentication
-            return await authApi.login(initData || '');
+            // Use backend for authentication (with optional phone number)
+            return await authApi.login(initData || '', phoneNumber);
         },
     });
 };

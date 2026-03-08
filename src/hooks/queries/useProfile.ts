@@ -58,6 +58,7 @@ export const useProfile = ({ telegramUser }: UseProfileProps = {}) => {
             return MOCK_USER;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
+        refetchInterval: 10000, // Refetch every 10 seconds to update balance and active rentals
     });
 };
 

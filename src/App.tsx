@@ -6,7 +6,7 @@ import { Loader, SideDrawer } from './components';
 import { useTelegram } from './hooks/useTelegram';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useAppDispatch, useAppSelector } from './store';
-import { setTelegramUser, setAuthenticating, loginSuccess, loginFailure } from './store/slices/authSlice';
+import { setTelegramUser, setAuthenticating, loginSuccess, loginFailure, setPhoneNumber } from './store/slices/authSlice';
 import { clearSelectedCar } from './store/slices/carsSlice';
 import { setActiveTab, setTelegramReady } from './store/slices/uiSlice';
 import { APP_CONFIG } from './config';
@@ -25,7 +25,7 @@ function AppContent() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isReady, user: tgUser, initData } = useTelegram();
+  const { isReady, user: tgUser, initData, requestContact } = useTelegram();
 
   // App-level geolocation — single watchPosition, never remounts
   useGeolocation();
@@ -78,6 +78,18 @@ function AppContent() {
       try {
         const response = await loginTelegram({ user: tgUser || undefined, initData });
         dispatch(loginSuccess(response));
+
+        // Request phone number if not already shared
+        if (!response.phoneNumber) {
+          try {
+            await requestContact();
+            // Phone is sent to bot via webhook → 1C saves it
+            // We mark it as 'shared' locally so we don't ask again this session
+            dispatch(setPhoneNumber('shared'));
+          } catch {
+            // User declined — that's ok, they can share later from Profile
+          }
+        }
       } catch (err) {
         console.error('Authentication failed:', err);
         dispatch(loginFailure(err instanceof Error ? err.message : 'Ошибка авторизации'));
@@ -225,7 +237,7 @@ function App() {
         containerClassName="!p-4"
         containerStyle={{ pointerEvents: 'none', zIndex: 9999 }}
         toastOptions={{
-          duration: Infinity,
+          duration: 4000,
         }}
       />
       <AppContent />
