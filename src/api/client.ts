@@ -15,19 +15,23 @@ const apiClient: AxiosInstance = axios.create({
 
 import { APP_CONFIG } from '../config';
 
-// Request interceptor to add Telegram Init Data
+// Request interceptor to add auth headers
 apiClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
-        // Get Telegram WebApp init data
-        const tg = window.Telegram?.WebApp;
-        if (tg?.initData) {
-            config.headers.Authorization = `tma ${tg.initData}`;
+        // Priority 1: Use stored JWT token for authenticated endpoints (profile, rentals, etc.)
+        // The JwtAuthGuard on the backend expects 'Bearer <token>' format
+        const token = localStorage.getItem('accessToken');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
         }
 
-        // Add stored JWT token if available
-        const token = localStorage.getItem('accessToken');
-        if (token && !config.headers.Authorization) {
-            config.headers.Authorization = `Bearer ${token}`;
+        // Priority 2: Fallback to Telegram initData (only for /auth/telegram endpoint)
+        // This is used during the initial login when we don't have a JWT yet
+        if (!config.headers.Authorization) {
+            const tg = window.Telegram?.WebApp;
+            if (tg?.initData) {
+                config.headers.Authorization = `tma ${tg.initData}`;
+            }
         }
 
         if (APP_CONFIG.DEV_MODE) {

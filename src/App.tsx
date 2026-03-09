@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import './index.css';
-import { Loader, SideDrawer } from './components';
+import { Loader, SideDrawer, TelegramGate } from './components';
 import { useTelegram } from './hooks/useTelegram';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useAppDispatch, useAppSelector } from './store';
@@ -134,6 +134,11 @@ function AppContent() {
   const handleCloseDrawer = useCallback(() => {
     setIsDrawerOpen(false);
   }, []);
+
+  // Block non-Telegram access (UX-only; backend is protected by JWT)
+  if (!DEV_MODE && !initData) {
+    return <TelegramGate />;
+  }
 
   // Loading state
   if (!DEV_MODE && (!isTelegramReady || isAuthenticating)) {

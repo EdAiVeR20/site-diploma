@@ -6,4 +6,5 @@ export { GeolocationWarning } from './GeolocationWarning';
 export { LocationButton } from './LocationButton';
 export { SideDrawer } from './SideDrawer';
 export { CarCarousel } from './CarCarousel';
+export { TelegramGate } from './TelegramGate';
 

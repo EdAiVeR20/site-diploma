@@ -15,10 +15,8 @@ export function TelegramGate() {
             {/* Content card */}
             <div className="relative z-10 flex flex-col items-center gap-6 max-w-sm w-full">
                 {/* Logo / Icon */}
-                <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/30 animate-scale-in">
-                    <svg className="w-14 h-14 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125v-4.653c0-.247-.04-.49-.12-.72l-1.612-4.838A1.125 1.125 0 0018.375 6h-2.25m0 0H14.25m0 0h-3.375a1.125 1.125 0 00-1.093.867L8.625 11.25m0 0h6.75" />
-                    </svg>
+                <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/30 animate-scale-in overflow-hidden">
+                    <img src="/favicon.png" alt="GoShare Logo" className="w-full h-full object-cover" />
                 </div>
 
                 {/* Title */}
