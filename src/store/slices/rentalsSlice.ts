@@ -1,27 +1,25 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { Tariff } from '../../types';
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { Tariff } from "../../types";
 
 interface RentalsState {
-    selectedTariff: Tariff | null;
+  selectedTariff: Tariff | null;
 }
 
 const initialState: RentalsState = {
-    selectedTariff: null,
+  selectedTariff: null,
 };
 
-
-
 const rentalsSlice = createSlice({
-    name: 'rentals',
-    initialState,
-    reducers: {
-        selectTariff: (state, action: PayloadAction<Tariff>) => {
-            state.selectedTariff = action.payload;
-        },
-        clearSelectedTariff: (state) => {
-            state.selectedTariff = null;
-        },
+  name: "rentals",
+  initialState,
+  reducers: {
+    selectTariff: (state, action: PayloadAction<Tariff>) => {
+      state.selectedTariff = action.payload;
     },
+    clearSelectedTariff: (state) => {
+      state.selectedTariff = null;
+    },
+  },
 });
 
 export const { selectTariff, clearSelectedTariff } = rentalsSlice.actions;

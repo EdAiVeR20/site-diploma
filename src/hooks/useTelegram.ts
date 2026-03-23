@@ -1,176 +1,230 @@
-import { useEffect, useState, useCallback } from 'react';
-import type { TelegramUser } from '../types';
+import { useEffect, useState, useCallback } from "react";
+import type { TelegramUser } from "../types";
 
 // Type for Telegram WebApp from global declaration
-type TelegramWebApp = NonNullable<typeof window.Telegram>['WebApp'];
+type TelegramWebApp = NonNullable<typeof window.Telegram>["WebApp"];
 
 interface UseTelegramReturn {
-    tg: TelegramWebApp | null;
-    user: TelegramUser | null;
-    initData: string;
-    isReady: boolean;
-    colorScheme: 'light' | 'dark';
-    viewportHeight: number;
-    showMainButton: (text: string, onClick: () => void) => void;
-    hideMainButton: () => void;
-    showBackButton: (onClick: () => void) => void;
-    hideBackButton: () => void;
-    hapticFeedback: (type: 'success' | 'error' | 'warning' | 'light' | 'medium' | 'heavy') => void;
-    showAlert: (message: string) => Promise<void>;
-    showConfirm: (message: string) => Promise<boolean>;
-    requestContact: () => Promise<string | null>;
-    close: () => void;
+  tg: TelegramWebApp | null;
+  user: TelegramUser | null;
+  initData: string;
+  isReady: boolean;
+  colorScheme: "light" | "dark";
+  viewportHeight: number;
+  showMainButton: (text: string, onClick: () => void) => void;
+  hideMainButton: () => void;
+  showBackButton: (onClick: () => void) => void;
+  hideBackButton: () => void;
+  hapticFeedback: (
+    type: "success" | "error" | "warning" | "light" | "medium" | "heavy",
+  ) => void;
+  showAlert: (message: string) => Promise<void>;
+  showConfirm: (message: string) => Promise<boolean>;
+  requestContact: () => Promise<string | null>;
+  close: () => void;
 }
 
 export function useTelegram(): UseTelegramReturn {
-    const [isReady, setIsReady] = useState(false);
-    const [user, setUser] = useState<TelegramUser | null>(null);
-    const [colorScheme, setColorScheme] = useState<'light' | 'dark'>('light');
-    const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+  const [isReady, setIsReady] = useState(false);
+  const [user, setUser] = useState<TelegramUser | null>(null);
+  const [colorScheme, setColorScheme] = useState<"light" | "dark">("light");
+  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
 
-    const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : null;
+  const tg = typeof window !== "undefined" ? window.Telegram?.WebApp : null;
 
-    // Initialize Telegram WebApp synchronously
-    useEffect(() => {
-        if (!tg) return;
+  // Initialize Telegram WebApp synchronously
+  useEffect(() => {
+    if (!tg) return;
 
-        // Initialize Telegram WebApp
-        tg.ready();
-        tg.expand();
+    // Initialize Telegram WebApp
+    tg.ready();
+    tg.expand();
 
-        // Apply theme colors to CSS variables
-        if (tg.themeParams) {
-            const root = document.documentElement;
-            if (tg.themeParams.bg_color) root.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color);
-            if (tg.themeParams.text_color) root.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color);
-            if (tg.themeParams.hint_color) root.style.setProperty('--tg-theme-hint-color', tg.themeParams.hint_color);
-            if (tg.themeParams.link_color) root.style.setProperty('--tg-theme-link-color', tg.themeParams.link_color);
-            if (tg.themeParams.button_color) root.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color);
-            if (tg.themeParams.button_text_color) root.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color);
-            if (tg.themeParams.secondary_bg_color) root.style.setProperty('--tg-theme-secondary-bg-color', tg.themeParams.secondary_bg_color);
-        }
-
-        // Parse user data
-        const tgUser = tg.initDataUnsafe?.user;
-        if (tgUser) {
-            setUser({
-                id: tgUser.id,
-                firstName: tgUser.first_name,
-                lastName: tgUser.last_name,
-                username: tgUser.username,
-                photoUrl: tgUser.photo_url,
-                languageCode: tgUser.language_code,
-            });
-        }
-
-        // Set initial state
-        setColorScheme(tg.colorScheme);
-        setViewportHeight(tg.viewportStableHeight || window.innerHeight);
-        setIsReady(true);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    const showMainButton = useCallback((text: string, onClick: () => void) => {
-        if (!tg) return;
-        tg.MainButton.setText(text);
-        tg.MainButton.onClick(onClick);
-        tg.MainButton.show();
-    }, [tg]);
-
-    const hideMainButton = useCallback(() => {
-        if (!tg) return;
-        tg.MainButton.hide();
-    }, [tg]);
-
-    const showBackButton = useCallback((onClick: () => void) => {
-        if (!tg) return;
-        tg.BackButton.onClick(onClick);
-        tg.BackButton.show();
-    }, [tg]);
-
-    const hideBackButton = useCallback(() => {
-        if (!tg) return;
-        tg.BackButton.hide();
-    }, [tg]);
-
-    const hapticFeedback = useCallback((type: 'success' | 'error' | 'warning' | 'light' | 'medium' | 'heavy') => {
-        if (!tg) return;
-        if (['success', 'error', 'warning'].includes(type)) {
-            tg.HapticFeedback.notificationOccurred(type as 'success' | 'error' | 'warning');
-        } else {
-            tg.HapticFeedback.impactOccurred(type as 'light' | 'medium' | 'heavy');
-        }
-    }, [tg]);
-
-    const showAlert = useCallback((message: string): Promise<void> => {
-        return new Promise((resolve) => {
-            if (!tg) {
-                alert(message);
-                resolve();
-                return;
-            }
-            tg.showAlert(message, resolve);
-        });
-    }, [tg]);
-
-    const showConfirm = useCallback((message: string): Promise<boolean> => {
-        return new Promise((resolve) => {
-            if (!tg) {
-                resolve(confirm(message));
-                return;
-            }
-            tg.showConfirm(message, (confirmed) => resolve(confirmed));
-        });
-    }, [tg]);
-
-    const close = useCallback(() => {
-        tg?.close();
-    }, [tg]);
-
-    const requestContact = useCallback((): Promise<string | null> => {
-        return new Promise((resolve) => {
-            if (!tg) {
-                resolve(null);
-                return;
-            }
-
-            // Use Telegram WebApp requestContact — shows native popup
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const webApp = tg as any;
-            if (typeof webApp.requestContact !== 'function') {
-                // requestContact is not available (older version of Telegram)
-                resolve(null);
-                return;
-            }
-
-            webApp.requestContact((sent: boolean) => {
-                if (sent) {
-                    // The phone number was shared via the bot — we get it from initDataUnsafe
-                    // Note: Telegram sends the contact to the bot, not directly to the Mini App
-                    // The bot can then forward it. For now, we flag the intent.
-                    resolve('shared');
-                } else {
-                    resolve(null);
-                }
-            });
-        });
-    }, [tg]);
-
-    return {
-        tg: tg ?? null,
-        user,
-        initData: tg?.initData ?? '',
-        isReady,
-        colorScheme,
-        viewportHeight,
-        showMainButton,
-        hideMainButton,
-        showBackButton,
-        hideBackButton,
-        hapticFeedback,
-        showAlert,
-        showConfirm,
-        requestContact,
-        close,
+    // Disable vertical swipes to prevent Mini App from closing
+    // when user interacts with bottom sheet car cards
+    const extTg = tg as TelegramWebApp & {
+      disableVerticalSwipes?: () => void;
     };
+    if (typeof extTg.disableVerticalSwipes === "function") {
+      extTg.disableVerticalSwipes();
+    }
+
+    // Apply theme colors to CSS variables
+    if (tg.themeParams) {
+      const root = document.documentElement;
+      if (tg.themeParams.bg_color)
+        root.style.setProperty("--tg-theme-bg-color", tg.themeParams.bg_color);
+      if (tg.themeParams.text_color)
+        root.style.setProperty(
+          "--tg-theme-text-color",
+          tg.themeParams.text_color,
+        );
+      if (tg.themeParams.hint_color)
+        root.style.setProperty(
+          "--tg-theme-hint-color",
+          tg.themeParams.hint_color,
+        );
+      if (tg.themeParams.link_color)
+        root.style.setProperty(
+          "--tg-theme-link-color",
+          tg.themeParams.link_color,
+        );
+      if (tg.themeParams.button_color)
+        root.style.setProperty(
+          "--tg-theme-button-color",
+          tg.themeParams.button_color,
+        );
+      if (tg.themeParams.button_text_color)
+        root.style.setProperty(
+          "--tg-theme-button-text-color",
+          tg.themeParams.button_text_color,
+        );
+      if (tg.themeParams.secondary_bg_color)
+        root.style.setProperty(
+          "--tg-theme-secondary-bg-color",
+          tg.themeParams.secondary_bg_color,
+        );
+    }
+
+    // Parse user data
+    const tgUser = tg.initDataUnsafe?.user;
+    if (tgUser) {
+      setUser({
+        id: tgUser.id,
+        firstName: tgUser.first_name,
+        lastName: tgUser.last_name,
+        username: tgUser.username,
+        photoUrl: tgUser.photo_url,
+        languageCode: tgUser.language_code,
+      });
+    }
+
+    // Set initial state
+    setColorScheme(tg.colorScheme);
+    setViewportHeight(tg.viewportStableHeight || window.innerHeight);
+    setIsReady(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const showMainButton = useCallback(
+    (text: string, onClick: () => void) => {
+      if (!tg) return;
+      tg.MainButton.setText(text);
+      tg.MainButton.onClick(onClick);
+      tg.MainButton.show();
+    },
+    [tg],
+  );
+
+  const hideMainButton = useCallback(() => {
+    if (!tg) return;
+    tg.MainButton.hide();
+  }, [tg]);
+
+  const showBackButton = useCallback(
+    (onClick: () => void) => {
+      if (!tg) return;
+      tg.BackButton.onClick(onClick);
+      tg.BackButton.show();
+    },
+    [tg],
+  );
+
+  const hideBackButton = useCallback(() => {
+    if (!tg) return;
+    tg.BackButton.hide();
+  }, [tg]);
+
+  const hapticFeedback = useCallback(
+    (type: "success" | "error" | "warning" | "light" | "medium" | "heavy") => {
+      if (!tg) return;
+      if (["success", "error", "warning"].includes(type)) {
+        tg.HapticFeedback.notificationOccurred(
+          type as "success" | "error" | "warning",
+        );
+      } else {
+        tg.HapticFeedback.impactOccurred(type as "light" | "medium" | "heavy");
+      }
+    },
+    [tg],
+  );
+
+  const showAlert = useCallback(
+    (message: string): Promise<void> => {
+      return new Promise((resolve) => {
+        if (!tg) {
+          alert(message);
+          resolve();
+          return;
+        }
+        tg.showAlert(message, resolve);
+      });
+    },
+    [tg],
+  );
+
+  const showConfirm = useCallback(
+    (message: string): Promise<boolean> => {
+      return new Promise((resolve) => {
+        if (!tg) {
+          resolve(confirm(message));
+          return;
+        }
+        tg.showConfirm(message, (confirmed) => resolve(confirmed));
+      });
+    },
+    [tg],
+  );
+
+  const close = useCallback(() => {
+    tg?.close();
+  }, [tg]);
+
+  const requestContact = useCallback((): Promise<string | null> => {
+    return new Promise((resolve) => {
+      if (!tg) {
+        resolve(null);
+        return;
+      }
+
+      // Use Telegram WebApp requestContact — shows native popup
+      const webApp = tg as TelegramWebApp & {
+        requestContact?: (callback: (sent: boolean) => void) => void;
+      };
+      if (typeof webApp.requestContact !== "function") {
+        // requestContact is not available (older version of Telegram)
+        resolve(null);
+        return;
+      }
+
+      webApp.requestContact((sent: boolean) => {
+        if (sent) {
+          // The phone number was shared via the bot — we get it from initDataUnsafe
+          // Note: Telegram sends the contact to the bot, not directly to the Mini App
+          // The bot can then forward it. For now, we flag the intent.
+          resolve("shared");
+        } else {
+          resolve(null);
+        }
+      });
+    });
+  }, [tg]);
+
+  return {
+    tg: tg ?? null,
+    user,
+    initData: tg?.initData ?? "",
+    isReady,
+    colorScheme,
+    viewportHeight,
+    showMainButton,
+    hideMainButton,
+    showBackButton,
+    hideBackButton,
+    hapticFeedback,
+    showAlert,
+    showConfirm,
+    requestContact,
+    close,
+  };
 }

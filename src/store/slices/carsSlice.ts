@@ -1,25 +1,25 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { Car } from '../../types';
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { Car } from "../../types";
 
 interface CarsState {
-    selectedCar: Car | null;
+  selectedCar: Car | null;
 }
 
 const initialState: CarsState = {
-    selectedCar: null,
+  selectedCar: null,
 };
 
 const carsSlice = createSlice({
-    name: 'cars',
-    initialState,
-    reducers: {
-        selectCar: (state, action: PayloadAction<Car>) => {
-            state.selectedCar = action.payload;
-        },
-        clearSelectedCar: (state) => {
-            state.selectedCar = null;
-        },
+  name: "cars",
+  initialState,
+  reducers: {
+    selectCar: (state, action: PayloadAction<Car>) => {
+      state.selectedCar = action.payload;
     },
+    clearSelectedCar: (state) => {
+      state.selectedCar = null;
+    },
+  },
 });
 
 export const { selectCar, clearSelectedCar } = carsSlice.actions;

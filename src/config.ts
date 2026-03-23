@@ -7,8 +7,8 @@
  *   VITE_USE_BACKEND=true — use real NestJS backend
  */
 export const APP_CONFIG = {
-    /** Bypass Telegram auth and use mock data */
-    DEV_MODE: import.meta.env.VITE_DEV_MODE === 'true',
-    /** Use real backend instead of mock data */
-    USE_BACKEND: import.meta.env.VITE_USE_BACKEND === 'true',
+  /** Bypass Telegram auth and use mock data */
+  DEV_MODE: import.meta.env.VITE_DEV_MODE === "true",
+  /** Use real backend instead of mock data */
+  USE_BACKEND: import.meta.env.VITE_USE_BACKEND === "true",
 } as const;

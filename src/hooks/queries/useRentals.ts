@@ -1,96 +1,110 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { rentalsApi } from '../../api';
-import { APP_CONFIG } from '../../config';
-import type { RentalResponse, CompleteRentalResponse } from '../../types';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { rentalsApi } from "../../api";
+import { APP_CONFIG } from "../../config";
+import type {
+  RentalResponse,
+  CompleteRentalResponse,
+  CurrentRentalResponse,
+} from "../../types";
+import { profileKeys } from "./useProfile";
 
 const { USE_BACKEND } = APP_CONFIG;
 
 export const rentalKeys = {
-    all: ['rentals'] as const,
-    history: () => [...rentalKeys.all, 'history'] as const,
-    current: () => [...rentalKeys.all, 'current'] as const,
+  all: ["rentals"] as const,
+  history: () => [...rentalKeys.all, "history"] as const,
+  current: () => [...rentalKeys.all, "current"] as const,
 };
 
 export const useRentalHistory = () => {
-    return useQuery({
-        queryKey: rentalKeys.history(),
-        queryFn: async () => {
-            if (!USE_BACKEND) {
-                await new Promise(resolve => setTimeout(resolve, 300));
-                return [];
-            }
-            const response = await rentalsApi.getHistory();
-            return response.rentals;
-        },
-        staleTime: 5 * 60 * 1000, // 5 minutes
-    });
+  return useQuery({
+    queryKey: rentalKeys.history(),
+    queryFn: async () => {
+      if (!USE_BACKEND) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        return [];
+      }
+      const response = await rentalsApi.getHistory();
+      return response.rentals;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 };
 
 export const useCurrentRental = () => {
-    return useQuery({
-        queryKey: rentalKeys.current(),
-        queryFn: async () => {
-            if (!USE_BACKEND) {
-                return null;
-            }
-            return await rentalsApi.getCurrent();
-        },
-        // Auto-refresh the current rental status every minute if active
-        refetchInterval: (query) => (query.state.data ? 60000 : false),
-    });
+  return useQuery({
+    queryKey: rentalKeys.current(),
+    queryFn: async (): Promise<CurrentRentalResponse | null> => {
+      if (!USE_BACKEND) {
+        return null;
+      }
+      return await rentalsApi.getCurrent();
+    },
+    refetchOnWindowFocus: true,
+    // Auto-refresh the current rental status every 30 seconds if active
+    refetchInterval: (query) => (query.state.data?.rental ? 30000 : false),
+  });
 };
 
 export const useCreateRental = () => {
-    const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-    return useMutation({
-        mutationFn: async ({ carId, tariffId }: { carId: string; tariffId: string }) => {
-            if (!USE_BACKEND) {
-                await new Promise(resolve => setTimeout(resolve, 500));
-                const mockResponse: RentalResponse = {
-                    rentalId: `rental-${Date.now()}`,
-                    status: 'active',
-                    car: { brand: 'Test', model: 'Car' },
-                    tariff: { name: 'Почасовой', pricePerUnit: 450 },
-                    startTime: new Date().toISOString(),
-                    estimatedCost: 450,
-                };
-                return mockResponse;
-            }
-            return await rentalsApi.create({ carId, tariffId });
-        },
-        onSuccess: (newRental) => {
-            // Update the current rental in the cache
-            queryClient.setQueryData(rentalKeys.current(), newRental);
-            // Invalidate history so it refetches next time it's needed
-            queryClient.invalidateQueries({ queryKey: rentalKeys.history() });
-        },
-    });
+  return useMutation({
+    mutationFn: async ({
+      carId,
+      tariffId,
+    }: {
+      carId: string;
+      tariffId: string;
+    }) => {
+      if (!USE_BACKEND) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const mockResponse: RentalResponse = {
+          rentalId: `rental-${Date.now()}`,
+          status: "active",
+          car: { brand: "Test", model: "Car" },
+          tariff: { name: "Почасовой", pricePerUnit: 450 },
+          startTime: new Date().toISOString(),
+          estimatedCost: 450,
+        };
+        return mockResponse;
+      }
+      return await rentalsApi.create({ carId, tariffId });
+    },
+    onSuccess: () => {
+      // Invalidate everything — cars list, current rental, profile (hasActiveRental)
+      queryClient.invalidateQueries({ queryKey: rentalKeys.current() });
+      queryClient.invalidateQueries({ queryKey: rentalKeys.history() });
+      queryClient.invalidateQueries({ queryKey: ["cars"] });
+      queryClient.invalidateQueries({ queryKey: profileKeys.all });
+    },
+  });
 };
 
 export const useCompleteRental = () => {
-    const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-    return useMutation({
-        mutationFn: async ({ rentalId, endLatitude, endLongitude }: { rentalId: string; endLatitude: number; endLongitude: number }) => {
-            if (!USE_BACKEND) {
-                await new Promise(resolve => setTimeout(resolve, 500));
-                const mockResponse: CompleteRentalResponse = {
-                    rentalId,
-                    status: 'completed',
-                    duration: 120,
-                    totalCost: 900,
-                    newBalance: 5000,
-                };
-                return mockResponse;
-            }
-            return await rentalsApi.complete(rentalId, { endLatitude, endLongitude });
-        },
-        onSuccess: () => {
-            // Clear current rental
-            queryClient.setQueryData(rentalKeys.current(), null);
-            // Invalidate history
-            queryClient.invalidateQueries({ queryKey: rentalKeys.history() });
-        },
-    });
+  return useMutation({
+    mutationFn: async ({ rentalId }: { rentalId: string }) => {
+      if (!USE_BACKEND) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const mockResponse: CompleteRentalResponse = {
+          rentalId,
+          status: "completed",
+          duration: 120,
+          totalCost: 900,
+          newBalance: 5000,
+        };
+        return mockResponse;
+      }
+      return await rentalsApi.complete(rentalId);
+    },
+    onSuccess: () => {
+      // Clear current rental and refresh everything
+      queryClient.setQueryData(rentalKeys.current(), null);
+      queryClient.invalidateQueries({ queryKey: rentalKeys.history() });
+      queryClient.invalidateQueries({ queryKey: ["cars"] });
+      queryClient.invalidateQueries({ queryKey: profileKeys.all });
+    },
+  });
 };
