@@ -12,6 +12,8 @@ import { Button } from "../components";
 import { useTelegram } from "../hooks/useTelegram";
 import { useSubmitVerification } from "../hooks/queries/useProfile";
 
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png"];
+
 const fileSchema = z
   .custom<File>((val) => val instanceof File, "Пожалуйста, загрузите файл")
   .refine(
@@ -19,8 +21,8 @@ const fileSchema = z
     "Размер файла не должен превышать 10 МБ",
   )
   .refine(
-    (file) => file.type.startsWith("image/"),
-    "Пожалуйста, загрузите изображение",
+    (file) => ACCEPTED_IMAGE_TYPES.includes(file.type),
+    "Поддерживаются только JPEG и PNG. Если у вас iPhone — сделайте скриншот.",
   );
 
 const verificationSchema = z.object({
@@ -65,7 +67,7 @@ function UploadCard({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/jpg,.jpg,.jpeg,.png"
         capture={type === "selfie" ? "user" : "environment"}
         onChange={onFileChange(type)}
         className="hidden"
