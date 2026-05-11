@@ -6,12 +6,12 @@ const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 // Create axios instance
+// Do NOT set a default Content-Type — axios sets it automatically:
+//   plain object  → application/json
+//   FormData      → multipart/form-data; boundary=<auto>  ← required for file uploads
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 import { APP_CONFIG } from "../config";
