@@ -127,10 +127,17 @@ export const rentalsApi = {
   /**
    * Завершить аренду
    */
-  complete: async (rentalId: string): Promise<CompleteRentalResponse> => {
+  complete: async (
+    rentalId: string,
+    coords?: { latitude: number; longitude: number },
+  ): Promise<CompleteRentalResponse> => {
     const { data } = await apiClient.post<CompleteRentalResponse>(
       `/rentals/end`,
-      { rentalId, endTime: toLocalISOString() },
+      {
+        rentalId,
+        endTime: toLocalISOString(),
+        ...(coords && { latitude: coords.latitude, longitude: coords.longitude }),
+      },
     );
     return data;
   },
@@ -141,6 +148,41 @@ export const rentalsApi = {
   getHistory: async (): Promise<RentalHistoryResponse> => {
     const { data } =
       await apiClient.get<RentalHistoryResponse>("/rentals/history");
+    return data;
+  },
+
+  /**
+   * Сообщить об аварии
+   */
+  reportAccident: async (
+    rentalId: string,
+    description?: string,
+  ): Promise<{ success: boolean; message: string }> => {
+    // Get user location for accident coordinates
+    let coords: { latitude: number; longitude: number } | undefined;
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          timeout: 5000,
+          maximumAge: 30000,
+        }),
+      );
+      coords = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      };
+    } catch {
+      // Geolocation unavailable
+    }
+
+    const { data } = await apiClient.post<{
+      success: boolean;
+      message: string;
+    }>("/rentals/report-accident", {
+      rentalId,
+      description,
+      ...coords,
+    });
     return data;
   },
 };
@@ -174,11 +216,6 @@ export const verificationApi = {
     const { data } = await apiClient.post<VerificationResponse>(
       "/verification/upload",
       formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      },
     );
     return data;
   },

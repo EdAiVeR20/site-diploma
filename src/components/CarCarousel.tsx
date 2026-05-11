@@ -210,7 +210,7 @@ function CarCarouselInner({
                     <path d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                   <span className="text-xs font-medium text-[var(--color-accent)]">
-                    Бензин
+                    {car.fuelType || "Бензин"}
                   </span>
                 </div>
 

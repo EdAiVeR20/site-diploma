@@ -37,6 +37,7 @@ export interface Car {
   model: string;
   licensePlate: string;
   fuelLevel: number;
+  fuelType?: string;
   latitude: number;
   longitude: number;
   imageUrl?: string;
@@ -101,7 +102,7 @@ export interface RentalResponse {
 export interface CurrentRentalResponse {
   rental: {
     rentalId: string;
-    status: string;
+    status: RentalStatus;
     car: { brand: string; model: string; licensePlate: string };
     tariff: { name: string; pricePerUnit: number };
     startTime: string;
@@ -125,9 +126,26 @@ export interface RentalHistoryResponse {
 export type ProfileResponse = User;
 
 export interface VerificationResponse {
-  verificationId: string;
-  status: "pending";
+  success: boolean;
   message: string;
+  licenseData?: {
+    surname?: string;
+    name?: string;
+    middleName?: string;
+    series?: string;
+    number?: string;
+    issueDate?: string;
+    expirationDate?: string;
+  };
+  passportData?: {
+    surname?: string;
+    name?: string;
+    middleName?: string;
+    series?: string;
+    number?: string;
+    issueDate?: string;
+  };
+  warnings?: string[];
 }
 
 // API Request types

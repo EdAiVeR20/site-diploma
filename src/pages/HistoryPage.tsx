@@ -112,7 +112,7 @@ export function HistoryPage() {
                       </div>
                     )}
                     <span className="text-[var(--tg-theme-hint-color)]">
-                      {rental.tariff.name}
+                      {rental.tariff?.name || '—'}
                     </span>
                   </div>
                   {rental.totalCost && (

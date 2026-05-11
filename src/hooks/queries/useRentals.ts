@@ -97,7 +97,52 @@ export const useCompleteRental = () => {
         };
         return mockResponse;
       }
-      return await rentalsApi.complete(rentalId);
+
+      // Get user location to update car position on map
+      let coords: { latitude: number; longitude: number } | undefined;
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            timeout: 5000,
+            maximumAge: 30000,
+          }),
+        );
+        coords = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        };
+      } catch {
+        // Geolocation unavailable — continue without coords
+      }
+
+      return await rentalsApi.complete(rentalId, coords);
+    },
+    onSuccess: () => {
+      // Clear current rental and refresh everything
+      queryClient.setQueryData(rentalKeys.current(), null);
+      queryClient.invalidateQueries({ queryKey: rentalKeys.history() });
+      queryClient.invalidateQueries({ queryKey: ["cars"] });
+      queryClient.invalidateQueries({ queryKey: profileKeys.all });
+    },
+  });
+};
+
+export const useReportAccident = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      rentalId,
+      description,
+    }: {
+      rentalId: string;
+      description?: string;
+    }) => {
+      if (!USE_BACKEND) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        return { success: true, message: "Аварийная ситуация зарегистрирована" };
+      }
+      return await rentalsApi.reportAccident(rentalId, description);
     },
     onSuccess: () => {
       // Clear current rental and refresh everything

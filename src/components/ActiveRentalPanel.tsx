@@ -2,7 +2,10 @@ import { memo, useState, useEffect, useCallback } from "react";
 import { Button } from "./Button";
 import { useTelegram } from "../hooks/useTelegram";
 import { useCurrentRental } from "../hooks/queries/useRentals";
-import { useCompleteRental } from "../hooks/queries/useRentals";
+import {
+  useCompleteRental,
+  useReportAccident,
+} from "../hooks/queries/useRentals";
 
 interface ActiveRentalPanelProps {
   isVisible?: boolean;
@@ -45,6 +48,8 @@ export const ActiveRentalPanel = memo(function ActiveRentalPanel({
   const { data: currentRentalData } = useCurrentRental();
   const { mutateAsync: completeRental, isPending: isCompleting } =
     useCompleteRental();
+  const { mutateAsync: reportAccident, isPending: isReporting } =
+    useReportAccident();
 
   const rental = currentRentalData?.rental ?? null;
 
@@ -195,6 +200,7 @@ export const ActiveRentalPanel = memo(function ActiveRentalPanel({
             variant="danger"
             onClick={handleComplete}
             loading={isCompleting}
+            disabled={isReporting}
           >
             <div className="flex items-center justify-center gap-2">
               <svg
@@ -218,6 +224,41 @@ export const ActiveRentalPanel = memo(function ActiveRentalPanel({
               Завершить поездку
             </div>
           </Button>
+
+          {/* Accident Report Button */}
+          <button
+            type="button"
+            className="w-full mt-2 py-2.5 rounded-xl text-sm font-medium text-red-400 bg-red-500/10 border border-red-500/20 active:bg-red-500/20 transition-colors disabled:opacity-50"
+            onClick={async () => {
+              if (!rental) return;
+              const confirmed = await showConfirm(
+                "⚠️ Вы уверены, что хотите сообщить об аварии?\n\nАренда будет завершена, автомобиль получит статус \"Авария\", оператор будет уведомлён.",
+              );
+              if (!confirmed) return;
+              try {
+                hapticFeedback("heavy");
+                const result = await reportAccident({
+                  rentalId: rental.rentalId,
+                  description: `ДТП: ${rental.car.brand} ${rental.car.model} (${rental.car.licensePlate})`,
+                });
+                hapticFeedback("success");
+                await showAlert(
+                  result.message || "Аварийная ситуация зарегистрирована. Оператор уведомлён.",
+                );
+              } catch {
+                hapticFeedback("error");
+                await showAlert("Не удалось отправить сообщение. Попробуйте ещё раз.");
+              }
+            }}
+            disabled={isCompleting || isReporting}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              Сообщить о ДТП
+            </div>
+          </button>
         </div>
       </div>
     </div>
