@@ -32,11 +32,7 @@ export function HistoryPage() {
       active: { label: "Активна", class: "bg-blue-500/15 text-blue-400" },
       pending: { label: "Ожидает", class: "badge-warning" },
       cancelled: { label: "Отменена", class: "badge-error" },
-      accident: {
-        label: "ДТП",
-        class:
-          "bg-red-500/15 text-red-400 border border-red-500/30",
-      },
+      accident: { label: "ДТП", class: "badge-error" },
     };
     return config[status] ?? config.completed;
   };
