@@ -2,11 +2,31 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { rentalsApi } from "../../api";
 import { APP_CONFIG } from "../../config";
 import type {
+  Rental,
   RentalResponse,
   CompleteRentalResponse,
   CurrentRentalResponse,
 } from "../../types";
 import { profileKeys } from "./useProfile";
+
+const HISTORY_CACHE_KEY = "goshare_history_cache";
+
+const getCachedHistory = (): Rental[] | undefined => {
+  try {
+    const cached = localStorage.getItem(HISTORY_CACHE_KEY);
+    return cached ? (JSON.parse(cached) as Rental[]) : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const saveHistoryToCache = (rentals: Rental[]) => {
+  try {
+    localStorage.setItem(HISTORY_CACHE_KEY, JSON.stringify(rentals));
+  } catch {
+    /* noop */
+  }
+};
 
 const { USE_BACKEND } = APP_CONFIG;
 
@@ -25,9 +45,12 @@ export const useRentalHistory = () => {
         return [];
       }
       const response = await rentalsApi.getHistory();
+      saveHistoryToCache(response.rentals);
       return response.rentals;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
+    initialData: getCachedHistory,
+    initialDataUpdatedAt: 0,
   });
 };
 
