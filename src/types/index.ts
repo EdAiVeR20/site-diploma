@@ -74,7 +74,7 @@ export interface Rental {
   totalCost?: number;
 }
 
-export type RentalStatus = "pending" | "active" | "completed" | "cancelled";
+export type RentalStatus = "pending" | "active" | "completed" | "cancelled" | "accident";
 
 // API Response types
 export interface AuthResponse {

@@ -16,7 +16,7 @@ export const SideDrawer = memo(function SideDrawer({
   onNavigate,
 }: SideDrawerProps) {
   const { user: tgUser } = useTelegram();
-  const { telegramUser } = useAppSelector((state) => state.auth);
+  const { telegramUser, balance: cachedBalance } = useAppSelector((state) => state.auth);
   const { data: profile } = useProfile();
 
   // Get user info from TG SDK or Redux
@@ -29,7 +29,7 @@ export const SideDrawer = memo(function SideDrawer({
     : "Каршеринг";
   const photoUrl = tgUser?.photoUrl || null;
   const initial = displayUser?.firstName?.charAt(0) || "G";
-  const balance = profile?.balance ?? 0;
+  const balance = profile?.balance ?? cachedBalance;
   const formattedBalance = new Intl.NumberFormat("ru-RU", {
     style: "currency",
     currency: "RUB",
@@ -85,16 +85,17 @@ export const SideDrawer = memo(function SideDrawer({
               <div className="flex items-center gap-1.5 mt-1">
                 <svg
                   className="w-3.5 h-3.5 text-emerald-400"
-                  fill="none"
                   viewBox="0 0 24 24"
+                  fill="none"
                   stroke="currentColor"
                   strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
+                  <path d="M8 3v18" />
+                  <path d="M8 3h5a4 4 0 0 1 0 8H8" />
+                  <path d="M5 13h11" />
+                  <path d="M5 16h11" />
                 </svg>
                 <span className="text-sm font-semibold text-emerald-400">
                   {formattedBalance}

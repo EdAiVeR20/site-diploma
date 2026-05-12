@@ -24,13 +24,21 @@ export function HistoryPage() {
   };
 
   const getStatusInfo = (status: Rental["status"]) => {
-    const config = {
+    const config: Record<
+      Rental["status"],
+      { label: string; class: string }
+    > = {
       completed: { label: "Завершена", class: "badge-success" },
       active: { label: "Активна", class: "bg-blue-500/15 text-blue-400" },
       pending: { label: "Ожидает", class: "badge-warning" },
       cancelled: { label: "Отменена", class: "badge-error" },
+      accident: {
+        label: "ДТП",
+        class:
+          "bg-red-500/15 text-red-400 border border-red-500/30",
+      },
     };
-    return config[status];
+    return config[status] ?? config.completed;
   };
 
   if (isLoading) {

@@ -3,6 +3,25 @@ import { usersApi, verificationApi } from "../../api";
 import { APP_CONFIG } from "../../config";
 import type { User, VerificationStatus } from "../../types";
 
+const PROFILE_CACHE_KEY = "goshare_profile_cache";
+
+const getCachedProfile = (): User | undefined => {
+  try {
+    const cached = localStorage.getItem(PROFILE_CACHE_KEY);
+    return cached ? (JSON.parse(cached) as User) : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const saveProfileToCache = (profile: User) => {
+  try {
+    localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profile));
+  } catch {
+    /* noop */
+  }
+};
+
 const { USE_BACKEND } = APP_CONFIG;
 
 const MOCK_USER: User = {
@@ -37,7 +56,9 @@ export const useProfile = ({ telegramUser }: UseProfileProps = {}) => {
     queryFn: async () => {
       // Try to fetch from backend
       if (USE_BACKEND) {
-        return await usersApi.getProfile();
+        const data = await usersApi.getProfile();
+        saveProfileToCache(data);
+        return data;
       }
 
       // Fallback to mock data or create from telegram data
@@ -57,11 +78,14 @@ export const useProfile = ({ telegramUser }: UseProfileProps = {}) => {
       }
       return MOCK_USER;
     },
-    staleTime: 0, // Always treat as stale — enables background refetch for real-time balance
-    refetchInterval: 10000, // Refetch every 10 seconds to update balance and active rentals
-    refetchIntervalInBackground: false, // Don't refetch when tab is inactive
-    refetchOnWindowFocus: true, // Refresh when user returns to the app
-    retry: 2, // Retry on transient 1C failures
+    staleTime: 0,
+    refetchInterval: 10000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    retry: 2,
+    // Serve last-known profile instantly on startup; mark stale so background refetch runs immediately
+    initialData: getCachedProfile,
+    initialDataUpdatedAt: 0,
   });
 };
 
