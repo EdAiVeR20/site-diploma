@@ -23,12 +23,12 @@ export const SideDrawer = memo(function SideDrawer({
   const displayUser = tgUser || telegramUser;
   const displayName = displayUser
     ? `${displayUser.firstName}${displayUser.lastName ? " " + displayUser.lastName : ""}`
-    : "GoShare";
+    : "МашинаРядом";
   const displayUsername = displayUser?.username
     ? `@${displayUser.username}`
     : "Каршеринг";
   const photoUrl = tgUser?.photoUrl || null;
-  const initial = displayUser?.firstName?.charAt(0) || "G";
+  const initial = displayUser?.firstName?.charAt(0) || "М";
   const balance = profile?.balance ?? cachedBalance;
   const formattedBalance = new Intl.NumberFormat("ru-RU", {
     style: "currency",
@@ -182,7 +182,7 @@ export const SideDrawer = memo(function SideDrawer({
         {/* Footer */}
         <div className="p-6 border-t border-[var(--tg-theme-hint-color)]/20 mt-auto">
           <p className="text-xs text-[var(--tg-theme-hint-color)] text-center">
-            GoShare v1.0.0
+            МашинаРядом v1.0.0
           </p>
         </div>
       </div>

@@ -24,14 +24,14 @@ export function TelegramGate() {
         <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/30 animate-scale-in overflow-hidden">
           <img
             src="/favicon.png"
-            alt="GoShare Logo"
+            alt="МашинаРядом Logo"
             className="w-full h-full object-cover"
           />
         </div>
 
         {/* Title */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-2">GoShare</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">МашинаРядом</h1>
           <p className="text-blue-200/70 text-sm font-medium tracking-wide uppercase">
             Каршеринг нового поколения
           </p>
