@@ -51,18 +51,27 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Clear token and redirect to auth
+    const url: string = error.config?.url ?? "";
+    const status: number | undefined = error.response?.status;
+
+    // Clear the stored JWT only when a PROTECTED endpoint returns 401 —
+    // meaning the token has genuinely expired or is invalid.
+    //
+    // Do NOT clear it when the auth endpoint itself returns 401: that means
+    // the initData signature was rejected (e.g. replayed token, wrong bot),
+    // and the stored JWT might still be perfectly valid for other calls.
+    const isAuthEndpoint = url.includes("/auth/telegram");
+    if (status === 401 && !isAuthEndpoint) {
       localStorage.removeItem("accessToken");
       if (APP_CONFIG.DEV_MODE) {
-        console.error("[API ERROR 401] Unauthorized. Token cleared.");
+        console.error("[API ERROR 401] Token expired or invalid — cleared.");
       }
     }
 
     if (APP_CONFIG.DEV_MODE) {
       console.error(
-        `[API ERROR] ${error.response?.status || "Network"} at ${error.config?.url}:`,
-        error.response?.data || error.message,
+        `[API ERROR] ${status ?? "Network"} at ${url}:`,
+        error.response?.data ?? error.message,
       );
     }
     return Promise.reject(error);
