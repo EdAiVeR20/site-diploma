@@ -15,6 +15,10 @@ import {
 import { useTelegram } from "../hooks/useTelegram";
 import { useAvailableCars, useCarDetails } from "../hooks/queries/useCars";
 import { useCreateRental } from "../hooks/queries/useRentals";
+import {
+  checkRentalReadiness,
+  parseBackendRentalBlock,
+} from "../utils/rentalGuard";
 import { useProfile } from "../hooks/queries/useProfile";
 import type { Car, Tariff } from "../types";
 import toast from "react-hot-toast";
@@ -591,6 +595,16 @@ export const HomePage = memo(function HomePage({
       return;
     }
 
+    // Проверка готовности к аренде: телефон + верификация.
+    // Источник правил: src/utils/rentalGuard.ts (синхронизировано
+    // с backend assertUserCanRent).
+    const readiness = checkRentalReadiness(profile);
+    if (!readiness.canRent) {
+      hapticFeedback("error");
+      await showAlert(readiness.message);
+      return;
+    }
+
     // Use fresh balance from profile query (updates every 10s),
     // NOT Redux auth.balance which is stale after login
     const currentBalance = profile?.balance ?? 0;
@@ -626,14 +640,22 @@ export const HomePage = memo(function HomePage({
       hapticFeedback("success");
       await showAlert("Аренда успешно оформлена!");
       handleCardCollapse();
-    } catch {
+    } catch (err: unknown) {
       hapticFeedback("error");
+      // Защитная сеть: backend мог отклонить аренду через RENTAL_BLOCKED
+      // (например, если локальный profile был устаревший из кэша).
+      const axiosErr = err as { response?: { data?: unknown; status?: number } };
+      const block = parseBackendRentalBlock(axiosErr.response?.data);
+      if (block) {
+        await showAlert(block.message);
+        return;
+      }
       await showAlert("Не удалось оформить аренду. Попробуйте позже.");
     }
   }, [
+    profile,
     expandedCar,
     selectedTariff,
-    profile?.balance,
     hasActiveRental,
     createRental,
     hapticFeedback,

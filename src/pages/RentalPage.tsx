@@ -7,6 +7,11 @@ import {
   clearSelectedTariff,
 } from "../store/slices/rentalsSlice";
 import { useCreateRental } from "../hooks/queries/useRentals";
+import { useProfile } from "../hooks/queries/useProfile";
+import {
+  checkRentalReadiness,
+  parseBackendRentalBlock,
+} from "../utils/rentalGuard";
 import type { Car, Tariff } from "../types";
 
 interface RentalPageProps {
@@ -27,6 +32,7 @@ export function RentalPage({ car, onClose, onSuccess }: RentalPageProps) {
   const { selectedTariff } = useAppSelector((state) => state.rentals);
   const { mutateAsync: createRentalMutate, isPending: isCreating } =
     useCreateRental();
+  const { data: profile } = useProfile();
 
   // Initialize selected tariff
   useEffect(() => {
@@ -55,6 +61,16 @@ export function RentalPage({ car, onClose, onSuccess }: RentalPageProps) {
       return;
     }
 
+    // Проверка готовности к аренде: телефон + верификация.
+    // Источник правил: src/utils/rentalGuard.ts (синхронизировано
+    // с backend assertUserCanRent).
+    const readiness = checkRentalReadiness(profile);
+    if (!readiness.canRent) {
+      hapticFeedback("error");
+      await showAlert(readiness.message);
+      return;
+    }
+
     const confirmed = await showConfirm(
       `Арендовать ${car.brand} ${car.model} по тарифу "${selectedTariff.name}" (${selectedTariff.pricePerUnit} ₽/${selectedTariff.type === "hourly" ? "час" : selectedTariff.type === "daily" ? "сутки" : "мин"})?`,
     );
@@ -71,8 +87,14 @@ export function RentalPage({ car, onClose, onSuccess }: RentalPageProps) {
       hapticFeedback("success");
       await showAlert("Аренда успешно оформлена!");
       onSuccess();
-    } catch (err) {
+    } catch (err: unknown) {
       hapticFeedback("error");
+      const axiosErr = err as { response?: { data?: unknown } };
+      const block = parseBackendRentalBlock(axiosErr.response?.data);
+      if (block) {
+        await showAlert(block.message);
+        return;
+      }
       await showAlert("Не удалось оформить аренду. Попробуйте позже.");
       console.error(err);
     }
