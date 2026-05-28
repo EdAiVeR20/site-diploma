@@ -162,7 +162,7 @@ function CarCarouselInner({
   if (cars.length === 0) return null;
 
   return (
-    <div className="absolute bottom-6 left-0 right-0 z-30">
+    <div className="absolute bottom-12 left-0 right-0 z-30">
       <div
         ref={scrollRef}
         className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory"
