@@ -8,6 +8,7 @@ import {
 } from "../store/slices/rentalsSlice";
 import { useCreateRental } from "../hooks/queries/useRentals";
 import { useProfile } from "../hooks/queries/useProfile";
+import { APP_CONFIG } from "../config";
 import {
   checkRentalReadiness,
   parseBackendRentalBlock,
@@ -96,7 +97,7 @@ export function RentalPage({ car, onClose, onSuccess }: RentalPageProps) {
         return;
       }
       await showAlert("Не удалось оформить аренду. Попробуйте позже.");
-      console.error(err);
+      if (APP_CONFIG.DEV_MODE) console.error(err);
     }
   };
 

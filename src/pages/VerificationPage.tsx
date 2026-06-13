@@ -11,6 +11,7 @@ import { z } from "zod";
 import { Button } from "../components";
 import { useTelegram } from "../hooks/useTelegram";
 import { useSubmitVerification } from "../hooks/queries/useProfile";
+import { APP_CONFIG } from "../config";
 
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 
@@ -266,7 +267,7 @@ export function VerificationPage({
     } catch (err) {
       hapticFeedback("error");
       await showAlert("Не удалось отправить документы. Попробуйте позже.");
-      console.error(err);
+      if (APP_CONFIG.DEV_MODE) console.error(err);
     }
   };
 

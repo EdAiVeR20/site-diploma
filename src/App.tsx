@@ -132,7 +132,7 @@ function AppContent() {
           }
         }
       } catch (err) {
-        console.error("Authentication failed:", err);
+        if (DEV_MODE) console.error("Authentication failed:", err);
         dispatch(
           loginFailure(
             err instanceof Error ? err.message : "Ошибка авторизации",
