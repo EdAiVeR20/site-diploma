@@ -699,13 +699,8 @@ export const HomePage = memo(function HomePage({
         </svg>
       </button>
 
-      {/* Location button — при активной аренде поднимается над панелью аренды,
-          чтобы не перекрывалось меню и кнопка геолокации оставалась доступной */}
-      <div
-        className={`absolute right-4 z-[40] ${
-          hasActiveRental ? "bottom-[22rem]" : "top-1/2 -translate-y-1/2"
-        }`}
-      >
+      {/* Location button */}
+      <div className="absolute top-1/2 right-4 z-[40] transform -translate-y-1/2">
         <LocationButton onClick={handleCenterOnUser} />
       </div>
 
@@ -718,8 +713,6 @@ export const HomePage = memo(function HomePage({
         selectedCarId={selectedCarId}
         centerOnUserTrigger={centerOnUserTrigger}
         className="!rounded-none"
-        // При активной аренде поднимаем копирайт Яндекс.Карт над панелью (≈ высота панели)
-        bottomMargin={hasActiveRental ? 330 : 0}
       />
 
       {/* Car Carousel — only show when no active rental */}
