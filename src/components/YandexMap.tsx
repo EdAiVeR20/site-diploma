@@ -16,6 +16,8 @@ interface YandexMapProps {
   selectedCarId?: string;
   centerOnUserTrigger?: number;
   className?: string;
+  /** Нижний отступ карты (px) — поднимает копирайт Яндекс.Карт над панелью аренды */
+  bottomMargin?: number;
 }
 
 // Loading Component

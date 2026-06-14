@@ -24,6 +24,12 @@ interface YandexMapProps {
   centerOnUserTrigger?: number;
   className?: string;
   isDark: boolean;
+  /**
+   * Нижний отступ карты в пикселях. Сдвигает обязательный копирайт
+   * Яндекс.Карт вверх, чтобы он не перекрывался панелью активной аренды.
+   * 0 — без отступа (по умолчанию).
+   */
+  bottomMargin?: number;
 }
 
 // We need to await the module at the top level (Vite supports top-level await)
@@ -42,6 +48,7 @@ const YandexMapContent = ({
   selectedCarId,
   centerOnUserTrigger,
   isDark,
+  bottomMargin = 0,
 }: YandexMapProps) => {
   // Ref to the native YMap instance — used for imperative setLocation()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ymaps3 reactified components don't expose typed ref
@@ -68,6 +75,13 @@ const YandexMapContent = ({
 
   // useDefault only sets the initial/default position (uncontrolled mode)
   const defaultLocation = reactify.useDefault(initialLocation);
+
+  // Map margins [top, right, bottom, left] in px. Нижний отступ поднимает
+  // обязательный копирайт Яндекс.Карт над панелью активной аренды.
+  const mapMargin = useMemo<[number, number, number, number]>(
+    () => [0, 0, bottomMargin, 0],
+    [bottomMargin],
+  );
 
   // Smooth pan to a coordinate using the imperative map API
   const panTo = useCallback((center: [number, number], zoom: number) => {
@@ -131,6 +145,7 @@ const YandexMapContent = ({
       ref={mapRef}
       location={defaultLocation}
       theme={isDark ? "dark" : "light"}
+      margin={mapMargin}
     >
       <YMapDefaultSchemeLayer />
       <YMapDefaultFeaturesLayer />
