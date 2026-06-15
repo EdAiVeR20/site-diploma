@@ -30,7 +30,7 @@ function getElapsedTime(startTime: string) {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   const seconds = totalSeconds % 60;
-  return { hours, minutes, seconds, totalMinutes };
+  return { hours, minutes, seconds, totalMinutes, totalSeconds };
 }
 
 /**
@@ -40,6 +40,38 @@ function formatElapsed(h: number, m: number, s: number) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
+
+/**
+ * Определяет тип тарифа по его названию.
+ * Зеркалит логику 1С (ОбщийМодуль API_Каршеринг → ТипТарифаВСтроку),
+ * т.к. в ответе «текущая аренда» тариф приходит без поля type — только name.
+ */
+type TariffType = "minute" | "hourly" | "daily";
+function getTariffType(name: string): TariffType {
+  const n = (name || "").toLowerCase();
+  if (n.includes("сут") || n.includes("день")) return "daily";
+  if (n.includes("мин")) return "minute";
+  return "hourly";
+}
+
+/**
+ * Количество оплачиваемых единиц тарифа за прошедшее время.
+ * Формула ТОЧНО совпадает с расчётом в 1С (ЗавершитьАрендуАвтомобиля):
+ *   - минутный: floor(сек/60), минимум 1
+ *   - часовой:  ceil(сек/3600), минимум 1  (неполный час округляется вверх)
+ *   - суточный: ceil(сек/86400), минимум 1 (неполные сутки округляются вверх)
+ */
+function getBillableUnits(type: TariffType, totalSeconds: number): number {
+  if (type === "daily") return Math.max(1, Math.ceil(totalSeconds / 86400));
+  if (type === "hourly") return Math.max(1, Math.ceil(totalSeconds / 3600));
+  return Math.max(1, Math.floor(totalSeconds / 60));
+}
+
+const UNIT_LABEL: Record<TariffType, string> = {
+  minute: "₽/мин",
+  hourly: "₽/час",
+  daily: "₽/сут",
+};
 
 export const ActiveRentalPanel = memo(function ActiveRentalPanel({
   isVisible = true,
@@ -58,7 +90,7 @@ export const ActiveRentalPanel = memo(function ActiveRentalPanel({
     if (rental?.startTime) {
       return getElapsedTime(rental.startTime);
     }
-    return { hours: 0, minutes: 0, seconds: 0, totalMinutes: 0 };
+    return { hours: 0, minutes: 0, seconds: 0, totalMinutes: 0, totalSeconds: 0 };
   });
 
   useEffect(() => {
@@ -71,9 +103,33 @@ export const ActiveRentalPanel = memo(function ActiveRentalPanel({
     return () => clearInterval(interval);
   }, [rental?.startTime]);
 
-  // Calculate live cost — round to 2 decimals to avoid IEEE 754 float noise
+  // Таймер считается от startTime, поэтому самовосстанавливается. Но когда
+  // приложение возвращается из фона, setInterval может «проспать» тик —
+  // пересчитываем время мгновенно при возврате в foreground, без ожидания.
+  useEffect(() => {
+    if (!rental?.startTime) return;
+    const refresh = () => {
+      if (document.visibilityState === "visible") {
+        setElapsed(getElapsedTime(rental.startTime));
+      }
+    };
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [rental?.startTime]);
+
+  // Тип тарифа выводим из названия (зеркало 1С) — в ответе «текущая аренда»
+  // поле type не приходит, поэтому определяем по name.
+  const tariffType = getTariffType(rental?.tariff?.name ?? "");
+
+  // Live-стоимость считаем ПО ТИПУ ТАРИФА — точно как в 1С:
+  // минутный → поминутно, часовой → по часам, суточный → посуточно.
   const liveCostRaw = rental?.tariff?.pricePerUnit
-    ? Math.max(1, elapsed.totalMinutes) * rental.tariff.pricePerUnit
+    ? getBillableUnits(tariffType, elapsed.totalSeconds) *
+      rental.tariff.pricePerUnit
     : 0;
   const liveCost = Math.round(liveCostRaw * 100) / 100;
 
@@ -191,7 +247,9 @@ export const ActiveRentalPanel = memo(function ActiveRentalPanel({
           {/* Tariff info */}
           <div className="flex items-center justify-between mb-4 text-xs text-[var(--tg-theme-hint-color)]">
             <span>Тариф: {rental.tariff.name}</span>
-            <span>{rental.tariff.pricePerUnit} ₽/мин</span>
+            <span>
+              {rental.tariff.pricePerUnit} {UNIT_LABEL[tariffType]}
+            </span>
           </div>
 
           {/* Complete Button */}

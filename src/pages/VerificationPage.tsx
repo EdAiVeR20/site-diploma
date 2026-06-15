@@ -34,6 +34,24 @@ const verificationSchema = z.object({
 
 type VerificationFormData = z.infer<typeof verificationSchema>;
 
+/**
+ * Достаёт понятное сообщение об ошибке из ответа backend (NestJS-формат:
+ * { message: string | string[] }). Так пользователь видит реальную причину
+ * (лимит OCR, «уже на проверке», 1С недоступна), а не общую заглушку.
+ */
+function extractErrorMessage(err: unknown): string {
+  const fallback = "Не удалось отправить документы. Попробуйте позже.";
+  if (err && typeof err === "object") {
+    const data = (err as { response?: { data?: { message?: unknown } } })
+      .response?.data;
+    const m = data?.message;
+    if (typeof m === "string" && m.trim()) return m;
+    if (Array.isArray(m) && typeof m[0] === "string" && m[0].trim())
+      return m[0];
+  }
+  return fallback;
+}
+
 interface VerificationPageProps {
   onClose: () => void;
   onSuccess: () => void;
@@ -262,11 +280,13 @@ export function VerificationPage({
       hapticFeedback("medium");
       await submitVerification(data);
       hapticFeedback("success");
-      await showAlert("Документы успешно отправлены на проверку!");
+      await showAlert(
+        "Документы успешно отправлены на проверку!\n\nОжидайте — оператор проверит их и подтвердит верификацию. Статус виден в профиле («На проверке»).",
+      );
       onSuccess();
     } catch (err) {
       hapticFeedback("error");
-      await showAlert("Не удалось отправить документы. Попробуйте позже.");
+      await showAlert(extractErrorMessage(err));
       if (APP_CONFIG.DEV_MODE) console.error(err);
     }
   };
