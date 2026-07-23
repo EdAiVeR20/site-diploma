@@ -39,7 +39,7 @@
 
 1. **Клонируйте репозиторий:**
    ```bash
-   git clone https://github.com/ВАШ_НИК/site-diploma.git
+   git clone https://github.com/EdAiVeR20/site-diploma.git
    cd site-diploma
    ```
 
